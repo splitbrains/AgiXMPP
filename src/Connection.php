@@ -48,6 +48,11 @@ class Connection
     return true;
   }
 
+  public function read()
+  {
+
+  }
+
   protected function setConnected($state)
   {
     $this->connected = $state;
