@@ -1,6 +1,7 @@
 <?php
 namespace XMPP;
 
+use XMPP\SocketMock;
 use XMPP\Socket;
 use XMPP\Client;
 use XMPP\XMLParser;
@@ -44,7 +45,7 @@ class Connection
   /**
    * @var Socket The basic socket stream
    */
-  protected $Socket;
+  protected $socket;
 
   /**
    * @var Logger
@@ -61,20 +62,22 @@ class Connection
    */
   protected $connected = false;
 
-
-  /* @todo:
-      All variables for packet handling
-                                        */
-  protected $_last_received_packet = 0;
-  protected $_received_packets = 0;
+  /**
+   * @var array The event handlers
+   */
   protected $_handlers = array();
-  protected $_queue    = array();
-  protected $_received_buffer;
 
+  /**
+   * @var string The queue buffer
+   */
+  protected $_received_buffer = '';
 
   const XMPP_PROTOCOL_VERSION = '1.0';
 
-  public function __construct($config)
+  /**
+   * @param array $config
+   */
+  public function __construct(array $config)
   {
     $this->setHost($config['host']);
     $this->setPort($config['port']);
@@ -84,9 +87,14 @@ class Connection
     $this->setResource($config['resource']);
 
     $this->XMLParser = new XMLParser();
-    $this->Socket    = new Socket();
+    $this->socket    = new Socket();
   }
 
+  /**
+   * Connects to the host with the settings from the config (set in the constructor)
+   *
+   * @return void
+   */
   public function connect()
   {
     $conn = $this->getSocket()->open('tcp', $this->getHost(), $this->getPort());
@@ -102,66 +110,70 @@ class Connection
     }
   }
 
+  /**
+   * Reconnects the socket stream
+   *
+   * @return void
+   */
   public function reconnect()
   {
     $this->disconnect();
     $this->connect();
   }
 
+  /**
+   * The core loop
+   *
+   * @return bool
+   */
   public function main()
   {
     $this->registerDefaultHandlers();
 
-    while($this->isConnected() && !$this->isTimedOut()) {
-      $packets = $this->getReceivedPackets();
+    do {
+      // Start time, to determine if we have a timeout
+      $start = microtime(true);
 
-      if ($packets > 0) {
-        echo strlen($this->_received_buffer);
+      if ($this->listen()) {
+        $parsed = $this->XMLParser->parse($this->_received_buffer);
+
+        if ($parsed !== false) {
+          foreach($this->getEventHandlers() as $event => $handlers) {
+            $found = $this->XMLParser->findTag($event, $parsed);
+
+            if ($found !== false) {
+              /** @var $handler EventReceiver */
+              foreach($handlers as $handler) {
+                $handler->onEvent($event, $found);
+              }
+            }
+          }
+        }
       }
-
+      $this->clearBuffer();
       $this->sleep();
-    }
+    } while($this->isConnected() && !$this->getSocket()->hasTimedOut($start));
 
     // end of main loop
+    return true;
+  }
+
+  protected function listen()
+  {
+    $buf = $this->getSocket()->read();
+    if ($buf !== false) {
+      $this->_received_buffer = $buf;
+      return true;
+    }
     return false;
   }
 
-  protected function getReceivedPackets()
+  protected function clearBuffer()
   {
-    $this->getSocket()->read();
+    $this->_received_buffer = '';
   }
 
-  protected function receivePackets()
-  {
-    while(true) {
-      $buf = $this->getSocket()->read();
-
-      if (!empty($buf)) {
-        $this->_last_received_packet = microtime(true);
-        $this->_received_packets++;
-        $this->_received_buffer += $buf;
-      }
-
-      if ($this->_last_received_packet + 1 > microtime(true)) {
-        echo '[Log] INFO: Finished packet. Last received packet: '.$this->_last_received_packet.PHP_EOL;
-        break;
-      }
-    }
-    $rcvd = $this->_received_packets;
-    $this->_received_packets = 0;
-
-    return $rcvd;
-  }
-
-  protected function processBufferQueue($data)
-  {
-    if (!empty($data)) {
-      print_r($this->XMLParser->parse($data));
-
-    }
-  }
-
-  public function registerDefaultHandlers()
+  protected function registerDefaultHandlers()
   {
     $streamHandler = new StreamHandlers();
 
@@ -173,13 +185,29 @@ class Connection
     //$this->addEventHandler('message', array($this, '_event_message'));
   }
 
+  /**
+   * @return array
+   */
+  protected function getEventHandlers()
+  {
+    return $this->_handlers;
+  }
 
+
+  /**
+   * @param $event
+   * @param EventHandlers\EventReceiver $eventHandler
+   */
   public function addEventHandler($event, EventReceiver $eventHandler)
   {
     $this->_handlers[$event][] = $eventHandler;
   }
 
 
+  /**
+   * @param $data
+   * @param array $args
+   */
   public function send($data, $args = array())
   {
     if (count($args) > 0) {
@@ -188,6 +216,9 @@ class Connection
     $this->getSocket()->write($data);
   }
 
+  /**
+   *
+   */
   public function disconnect()
   {
     $this->getSocket()->write('</stream:stream>');
@@ -195,27 +226,23 @@ class Connection
     $this->connected = false;
   }
 
+  /**
+   * @return bool
+   */
   public function isConnected()
   {
     return $this->connected;
   }
 
-  protected function sleep()
+  /**
+   * Let the main loop sleep a bit to reduce the load
+   *
+   * @param int $min
+   * @param int $max
+   */
+  protected function sleep($min = 100, $max = 500)
   {
-    usleep(mt_rand(50, 300) * 1000);
-  }
-
-  public function isTimedOut()
-  {
-    $info = stream_get_meta_data($this->getSocket()->getResource());
-    return $info['timed_out'];
-  }
-
-  public function setCrypt($method, $activate = true)
-  {
-    stream_set_blocking($this->Socket, true);
-    stream_socket_enable_crypto($this->Socket, $activate, $method);
-    stream_set_blocking($this->Socket, false);
+    usleep(mt_rand($min, $max) * 1000);
   }
   
   /**
@@ -223,29 +250,44 @@ class Connection
    */
   public function getSocket()
   {
-    return $this->Socket;
+    return $this->socket;
   }
 
+  /**
+   * @param $host
+   */
   public function setHost($host)
   {
     $this->host = $host;
   }
 
+  /**
+   * @return string
+   */
   public function getHost()
   {
     return $this->host;
   }
 
+  /**
+   * @param $pass
+   */
   public function setPass($pass)
   {
     $this->pass = $pass;
   }
 
+  /**
+   * @return string
+   */
   public function getPass()
   {
     return $this->pass;
   }
 
+  /**
+   * @param $port
+   */
   public function setPort($port)
   {
     if (is_numeric($port)) {
@@ -253,36 +295,57 @@ class Connection
     }
   }
 
+  /**
+   * @return int
+   */
   public function getPort()
   {
     return $this->port;
   }
 
+  /**
+   * @param $resource
+   */
   public function setResource($resource)
   {
     $this->resource = $resource;
   }
 
+  /**
+   * @return string
+   */
   public function getResource()
   {
     return $this->resource;
   }
 
+  /**
+   * @param $server
+   */
   public function setDomain($server)
   {
     $this->domain = $server;
   }
 
+  /**
+   * @return string
+   */
   public function getDomain()
   {
     return $this->domain;
   }
 
+  /**
+   * @param $user
+   */
   public function setUser($user)
   {
     $this->user = $user;
   }
 
+  /**
+   * @return string
+   */
   public function getUser()
   {
     return $this->user;
