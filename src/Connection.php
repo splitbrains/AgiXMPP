@@ -1,12 +1,12 @@
 <?php
 namespace XMPP;
 
-use XMPP\SocketMock;
 use XMPP\Socket;
 use XMPP\Client;
 use XMPP\XMLParser;
 use XMPP\Logger;
 
+use XMPP\EventHandlers\EventObject;
 use XMPP\EventHandlers\EventReceiver;
 use XMPP\EventHandlers\StreamHandlers;
 
@@ -58,11 +58,6 @@ class Connection
   protected $XMLParser;
 
   /**
-   * @var bool
-   */
-  protected $connected = false;
-
-  /**
    * @var array The event handlers
    */
   protected $_handlers = array();
@@ -98,27 +93,35 @@ class Connection
   public function connect()
   {
     $conn = $this->getSocket()->open('tcp', $this->getHost(), $this->getPort());
+    Logger::log('Attempting to connect to '.$this->getHost().':'.$this->getPort().'.');
 
     if ($conn) {
-      $this->send('<stream:stream to="%s" from="%s" version="%s" xmlns="jabber:client" xmlns:stream="http://etherx.jabber.org/streams">', array(
-          $this->getHost(),
-          $this->getUser(),
-          self::XMPP_PROTOCOL_VERSION
-        )
-      );
-      $this->connected = true;
+      $this->sendStart();
+    } else {
+      Logger::err('Could not connect to host.', true);
     }
   }
 
   /**
    * Reconnects the socket stream
    *
-   * @return void
+   * @param bool $closeStream
    */
-  public function reconnect()
+  public function reconnect($closeStream = false)
   {
-    $this->disconnect();
+    $this->disconnect($closeStream);
     $this->connect();
+  }
+
+  public function sendStart()
+  {
+    $conf = array($this->getHost(), $this->getUser(), self::XMPP_PROTOCOL_VERSION);
+    $this->send('<stream:stream to="%s" from="%s" version="%s" xmlns="jabber:client" xmlns:stream="http://etherx.jabber.org/streams">', $conf);
+  }
+
+  public function init()
+  {
+    $this->main();
   }
 
   /**
@@ -126,25 +129,28 @@ class Connection
    *
    * @return bool
    */
-  public function main()
+  protected function main()
   {
     $this->registerDefaultHandlers();
+    $socket = $this->getSocket();
 
     do {
       // Start time, to determine if we have a timeout
       $start = microtime(true);
 
       if ($this->listen()) {
-        $parsed = $this->XMLParser->parse($this->_received_buffer);
+        $buf = $this->XMLParser->parse($this->getBuffer());
 
-        if ($parsed !== false) {
+        if ($buf !== false) {
           foreach($this->getEventHandlers() as $event => $handlers) {
-            $found = $this->XMLParser->findTag($event, $parsed);
+            $response = $this->XMLParser->getResponse($buf);
 
-            if ($found !== false) {
+            if ($response->filter($event)) {
+              $context = new EventObject($socket, $response, $this);
+
               /** @var $handler EventReceiver */
               foreach($handlers as $handler) {
-                $handler->onEvent($event, $found);
+                $handler->onEvent($event, $context);
               }
             }
           }
@@ -152,7 +158,7 @@ class Connection
       }
       $this->clearBuffer();
       $this->sleep();
-    } while($this->isConnected() && !$this->getSocket()->hasTimedOut($start));
+    } while(!$socket->hasTimedOut($start) && $socket->isConnected());
 
     // end of main loop
     return true;
@@ -168,6 +174,11 @@ class Connection
     return false;
   }
 
+  protected function getBuffer()
+  {
+    return $this->_received_buffer;
+  }
+
   protected function clearBuffer()
   {
     $this->_received_buffer = '';
@@ -177,9 +188,12 @@ class Connection
   {
     $streamHandler = new StreamHandlers();
 
-    $this->addEventHandler('stream:stream', $streamHandler);
-    $this->addEventHandler('stream:features', $streamHandler);
-    $this->addEventHandler('stream:error', $streamHandler);
+    $streamEvents = array(
+      'stream:stream', 'stream:features',
+      'stream:error', 'starttls', 'proceed'
+    );
+
+    $this->addEventHandlers($streamEvents, $streamHandler);
     //$this->addEventHandler('presence', array($this, '_event_presence'));
     //$this->addEventHandler('iq', array($this, '_event_iq'));
     //$this->addEventHandler('message', array($this, '_event_message'));
@@ -195,12 +209,23 @@ class Connection
 
 
   /**
-   * @param $event
+   * @param string $event
    * @param EventHandlers\EventReceiver $eventHandler
    */
   public function addEventHandler($event, EventReceiver $eventHandler)
   {
     $this->_handlers[$event][] = $eventHandler;
+  }
+
+  /**
+   * @param array $events
+   * @param EventHandlers\EventReceiver $eventHandler
+   */
+  public function addEventHandlers(array $events, EventReceiver $eventHandler)
+  {
+    foreach($events as $event) {
+      $this->_handlers[$event][] = $eventHandler;
+    }
   }
 
 
@@ -217,21 +242,16 @@ class Connection
   }
 
   /**
-   *
+   * @param bool $closeStream
    */
-  public function disconnect()
+  public function disconnect($closeStream = false)
   {
-    $this->getSocket()->write('</stream:stream>');
+    if ($closeStream) {
+      $this->getSocket()->write('</stream:stream>');
+    }
     $this->getSocket()->close();
     $this->connected = false;
-  }
-
-  /**
-   * @return bool
-   */
-  public function isConnected()
-  {
-    return $this->connected;
+    Logger::log('Disconnected');
   }
 
   /**

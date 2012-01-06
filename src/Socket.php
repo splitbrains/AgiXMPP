@@ -12,6 +12,10 @@ class Socket
    */
   protected $socket = null;
 
+  /**
+   * @var bool
+   */
+  protected $connected = false;
 
   /**
    * @return resource
@@ -41,6 +45,7 @@ class Socket
     if ($this->socket) {
       stream_set_timeout($this->socket, self::TIMEOUT);
       stream_set_blocking($this->socket, 1);
+      $this->connected = true;
 
       return true;
     }
@@ -52,9 +57,14 @@ class Socket
    */
   public function close()
   {
-    socket_close($this->socket);
     fclose($this->socket);
     $this->socket = null;
+    $this->connected = false;
+  }
+
+  public function isConnected()
+  {
+    return $this->connected;
   }
 
   /**
@@ -70,12 +80,14 @@ class Socket
 
     if ($isUpdated > 0) {
       $buf = trim(fread($this->socket, $bytes));
-      Logger::log($buf, 'RECV');
-      return $buf;
+      if (strlen($buf) > 0) {
+        Logger::log($buf, 'RECV');
+        return $buf;
+      }
     } elseif ($isUpdated === false) {
       Logger::err('Cannot read from stream.');
     }
-    return false;
+    //return false;
   }
 
   /**
@@ -101,6 +113,7 @@ class Socket
    */
   public function setCrypt($activate = true)
   {
+    Logger::log('Enabling SSL v2/3');
     stream_socket_enable_crypto($this->socket, $activate, STREAM_CRYPTO_METHOD_SSLv23_CLIENT);
   }
 
@@ -113,6 +126,10 @@ class Socket
     $diff = microtime(true) - $start;
     $info = stream_get_meta_data($this->getSocket());
 
-    return $diff > self::TIMEOUT || $info['timed_out'];
+    if ($info['timed_out']) {
+      $this->connected = false;
+      return true;
+    }
+    return false;
   }
 }

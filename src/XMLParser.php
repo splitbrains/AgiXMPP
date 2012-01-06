@@ -1,8 +1,7 @@
 <?php
 namespace XMPP;
 
-use RecursiveIteratorIterator;
-use RecursiveArrayIterator;
+use XMPP\ResponseObject;
 
 class XMLParser
 {
@@ -27,32 +26,9 @@ class XMLParser
     return $this->xml2array($values);
   }
 
-  /**
-   * @param $needle
-   * @param array $haystack
-   * @return array|bool
-   */
-  function findTag($needle, array $haystack) {
-    $iterator = new RecursiveIteratorIterator(new RecursiveArrayIterator($haystack), RecursiveIteratorIterator::SELF_FIRST);
-    $needle_attr = $needle.'_attr';
-
-    $ret = array('values' => array(), 'attributes' => array());
-
-    foreach ($iterator as $val) {
-      $key = $iterator->key();
-
-      if (!is_numeric($key)) {
-        if ($key === $needle) {
-          $ret['values'] = $val;
-        } elseif ($key == $needle_attr) {
-          $ret['attributes'] = $val;
-        }
-      }
-    }
-    if (count($ret['values']) > 0 || count($ret['attributes']) > 0) {
-      return $ret;
-    }
-    return false;
+  public function getResponse($parsed)
+  {
+    return new ResponseObject($parsed);
   }
 
   /**
