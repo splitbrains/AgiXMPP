@@ -6,6 +6,7 @@ require_once './src/Socket.php';
 require_once './src/Connection.php';
 require_once './src/Client.php';
 require_once './src/XMLParser.php';
+require_once './src/ResponseObject.php';
 require_once './src/Logger.php';
 
 foreach(glob('./src/EventHandlers/*.php') as $fileName) {

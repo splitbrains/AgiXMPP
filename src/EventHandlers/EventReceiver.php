@@ -9,7 +9,7 @@ interface EventReceiver
   /**
    * @abstract
    * @param $eventName
-   * @param $context
+   * @param $that EventObject
    */
-  public function onEvent($eventName, $context);
+  public function onEvent($eventName, $that);
 }

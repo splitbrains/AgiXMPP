@@ -3,7 +3,7 @@ namespace XMPP;
 
 class Logger
 {
-  public static $enabled = false;
+  public static $enabled = true;
 
   public static function log($msg, $type = 'INFO')
   {
@@ -12,10 +12,14 @@ class Logger
     }
   }
 
-  public static function err($msg)
+  public static function err($msg, $exit = false)
   {
     if (self::$enabled) {
       self::write('[Err] '.$msg);
+
+      if ($exit) {
+        exit;
+      }
     }
   }
 
