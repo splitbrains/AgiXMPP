@@ -30,7 +30,7 @@ class ResponseObject
     $this->response = $this->original = $response;
   }
 
-  protected function findRecursive($needle)
+  protected function findRecursive($needle, $returnValue = false)
   {
     $iterator = new RecursiveIteratorIterator(new RecursiveArrayIterator($this->response), RecursiveIteratorIterator::SELF_FIRST);
 
@@ -38,7 +38,11 @@ class ResponseObject
       $key = $iterator->key();
 
       if ($key === $needle) {
-        return true;
+        if (!$returnValue) {
+          return true;
+        } else {
+          return $val;
+        }
       }
     }
     return false;
@@ -75,6 +79,16 @@ class ResponseObject
     if (count($ret['values']) > 0 || count($ret['attributes']) > 0) {
       $this->response = $ret;
       return true;
+    }
+    return false;
+  }
+
+  public function getAttributeFromTag($attr, $tag)
+  {
+    $found = $this->findRecursive($tag.'_attr', true);
+
+    if ($found !== false && $found[$attr]) {
+      return $found[$attr];
     }
     return false;
   }

@@ -8,7 +8,8 @@ use XMPP\Logger;
 
 use XMPP\EventHandlers\EventObject;
 use XMPP\EventHandlers\EventReceiver;
-use XMPP\EventHandlers\StreamHandlers;
+use XMPP\EventHandlers\StreamHandler;
+use XMPP\EventHandlers\InfoQueryHandler;
 
 class Connection
 {
@@ -66,6 +67,9 @@ class Connection
    * @var string The queue buffer
    */
   protected $_received_buffer = '';
+
+
+  protected $auth_status = false;
 
   const XMPP_PROTOCOL_VERSION = '1.0';
 
@@ -145,6 +149,7 @@ class Connection
           foreach($this->getEventHandlers() as $event => $handlers) {
             $response = $this->XMLParser->getResponse($buf);
 
+            // filter out the specific event from array
             if ($response->filter($event)) {
               $context = new EventObject($socket, $response, $this);
 
@@ -168,8 +173,12 @@ class Connection
   {
     $buf = $this->getSocket()->read();
     if ($buf !== false) {
-      $this->_received_buffer = $buf;
-      return true;
+      if ($buf == '</stream:stream>') {
+        $this->getSocket()->close();
+      } else {
+        $this->_received_buffer = $buf;
+        return true;
+      }
     }
     return false;
   }
@@ -186,14 +195,8 @@ class Connection
 
   protected function registerDefaultHandlers()
   {
-    $streamHandler = new StreamHandlers();
-
-    $streamEvents = array(
-      'stream:stream', 'stream:features',
-      'stream:error', 'starttls', 'proceed'
-    );
-
-    $this->addEventHandlers($streamEvents, $streamHandler);
+    $this->addEventHandlers(array('stream:stream', 'stream:features', 'stream:error', 'starttls', 'proceed', 'success', 'failure', 'bind'), new StreamHandler());
+    $this->addEventHandlers(array('iq', 'ping'), new InfoQueryHandler());
     //$this->addEventHandler('presence', array($this, '_event_presence'));
     //$this->addEventHandler('iq', array($this, '_event_iq'));
     //$this->addEventHandler('message', array($this, '_event_message'));
@@ -274,7 +277,7 @@ class Connection
   }
 
   /**
-   * @param $host
+   * @param string $host
    */
   public function setHost($host)
   {
@@ -290,7 +293,7 @@ class Connection
   }
 
   /**
-   * @param $pass
+   * @param string $pass
    */
   public function setPass($pass)
   {
@@ -306,7 +309,7 @@ class Connection
   }
 
   /**
-   * @param $port
+   * @param int $port
    */
   public function setPort($port)
   {
@@ -324,7 +327,7 @@ class Connection
   }
 
   /**
-   * @param $resource
+   * @param string $resource
    */
   public function setResource($resource)
   {
@@ -340,7 +343,7 @@ class Connection
   }
 
   /**
-   * @param $server
+   * @param string $server
    */
   public function setDomain($server)
   {
@@ -356,7 +359,7 @@ class Connection
   }
 
   /**
-   * @param $user
+   * @param string $user
    */
   public function setUser($user)
   {
@@ -369,5 +372,21 @@ class Connection
   public function getUser()
   {
     return $this->user;
+  }
+
+  /**
+   * @param bool $auth_status
+   */
+  public function setAuthStatus($auth_status)
+  {
+    $this->auth_status = $auth_status;
+  }
+
+  /**
+   * @return bool
+   */
+  public function getAuthStatus()
+  {
+    return $this->auth_status;
   }
 }

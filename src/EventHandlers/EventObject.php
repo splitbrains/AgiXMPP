@@ -26,7 +26,7 @@ class EventObject
   /**
    * @var \XMPP\ResponseObject
    */
-  protected $result;
+  protected $response;
 
   /**
    * @var \XMPP\Connection
@@ -36,18 +36,18 @@ class EventObject
   public function __construct(Socket $socket, ResponseObject $result, Connection $conn)
   {
     $this->setSocket($socket);
-    $this->setResult($result);
+    $this->setResponse($result);
     $this->setConnection($conn);
   }
 
-  public function setResult($array)
+  public function setResponse($array)
   {
-    $this->result = $array;
+    $this->response = $array;
   }
 
-  public function getResult()
+  public function getResponse()
   {
-    return $this->result;
+    return $this->response;
   }
 
   public function setSocket($socket)
