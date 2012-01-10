@@ -15,33 +15,114 @@ class ResponseObject
   /**
    * @var array
    */
-  protected $response;
+  protected $response = array();
 
   /**
    * @var array
    */
-  protected $original;
+  protected $filteredResponse = array();
+
+  /**
+   * xml2array() (see XMLParser.php) returns in a specific format
+   * so all attributes are stored in an own array with the key having a suffix which is '_attr'
+   */
+  const ATTR_SUFFIX = '_attr';
 
   /**
    * @param array $response
    */
   public function __construct(array $response)
   {
-    $this->response = $this->original = $response;
+    $this->response = $response;
   }
 
-  protected function findRecursive($needle, $returnValue = false)
+  protected function getResponse()
   {
+    if (count($this->filteredResponse) > 0) {
+      return $this->filteredResponse;
+    }
+    return $this->response;
+  }
+
+  /**
+   * @param $event
+   * @return bool
+   */
+  public function setFilter($event) {
+    if (!$event) {
+      $this->filteredResponse = array();
+      return true;
+    }
     $iterator = new RecursiveIteratorIterator(new RecursiveArrayIterator($this->response), RecursiveIteratorIterator::SELF_FIRST);
+
+    $attrs = $event.self::ATTR_SUFFIX;
+    $ret = array();
+
+    foreach($iterator as $val) {
+      $key = $iterator->key();
+
+      if ($key === $event || $key === $attrs) {
+        $ret[$key] = $val;
+      }
+    }
+
+    if (isset($ret[$event]) || isset($ret[$attrs])) {
+      $this->filteredResponse = $ret;
+      return true;
+    }
+    return false;
+  }
+
+  protected function findDeep($needle, $haystack)
+  {
+    $iterator = new RecursiveIteratorIterator(new RecursiveArrayIterator($haystack), RecursiveIteratorIterator::SELF_FIRST);
 
     foreach($iterator as $val) {
       $key = $iterator->key();
 
       if ($key === $needle) {
-        if (!$returnValue) {
+        return $val;
+      }
+    }
+    return false;
+  }
+
+  protected function isAttribute($string)
+  {
+    return substr($string, strlen($string) - strlen(self::ATTR_SUFFIX)) === self::ATTR_SUFFIX;
+  }
+
+  protected function isTag($string)
+  {
+    return !$this->isAttribute($string);
+  }
+
+  public function hasAttribute($attr, $check = '')
+  {
+    $response = $this->getResponse();
+
+    foreach($response as $tag => $val) {
+      if ($this->isAttribute($tag)) {
+        if (isset($val[$attr])) {
+          if (!empty($check)) {
+            return $val[$attr] == $check;
+          }
           return true;
-        } else {
-          return $val;
+        }
+      }
+    }
+
+    return false;
+  }
+
+  public function getAttribute($attr)
+  {
+    $response = $this->getResponse();
+
+    foreach($response as $tag => $val) {
+      if ($this->isAttribute($tag)) {
+        if (isset($val[$attr])) {
+          return $val[$attr];
         }
       }
     }
@@ -50,61 +131,21 @@ class ResponseObject
 
   public function hasTag($tag)
   {
-    return $this->findRecursive($tag);
+    return $this->findDeep($tag, $this->getResponse()) !== false;
   }
 
-  /**
-   * @param $event
-   * @return bool
-   */
-  public function filter($event) {
-    $haystack = $this->response;
-
-    $iterator = new RecursiveIteratorIterator(new RecursiveArrayIterator($haystack), RecursiveIteratorIterator::SELF_FIRST);
-    $needle_attr = $event.'_attr';
-
-    $ret = array('values' => array(), 'attributes' => array());
-
-    foreach ($iterator as $val) {
-      $key = $iterator->key();
-
-      if (!is_numeric($key)) {
-        if ($key === $event) {
-          $ret['values'] = $val;
-        } elseif ($key == $needle_attr) {
-          $ret['attributes'] = $val;
-        }
-      }
-    }
-    if (count($ret['values']) > 0 || count($ret['attributes']) > 0) {
-      $this->response = $ret;
-      return true;
-    }
-    return false;
+  public function getTag($tag)
+  {
+    return $this->findDeep($tag, $this->getResponse());
   }
 
   public function getAttributeFromTag($attr, $tag)
   {
-    $found = $this->findRecursive($tag.'_attr', true);
-
-    if ($found !== false && $found[$attr]) {
-      return $found[$attr];
-    }
-    return false;
-  }
-
-  public function getAttributes()
-  {
-    $result = $this->response;
-    return $result['attributes'];
-  }
-
-  public function getAttribute($attr)
-  {
-    $result = $this->response;
-
-    if (isset($result['attributes'][$attr])) {
-      return $result['attributes'][$attr];
+    $found = $this->findDeep($tag.self::ATTR_SUFFIX, $this->getResponse());
+    if ($found !== false) {
+      if (isset($found[$attr])) {
+        return $found[$attr];
+      }
     }
     return false;
   }

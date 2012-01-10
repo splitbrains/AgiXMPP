@@ -57,9 +57,11 @@ class Socket
    */
   public function close()
   {
-    fclose($this->socket);
-    $this->socket = null;
-    $this->connected = false;
+    if ($this->connected) {
+      fclose($this->socket);
+      $this->socket = null;
+      $this->connected = false;
+    }
   }
 
   public function isConnected()
@@ -124,9 +126,9 @@ class Socket
   public function hasTimedOut($start)
   {
     $diff = microtime(true) - $start;
-    $info = stream_get_meta_data($this->getSocket());
+    $info = @stream_get_meta_data($this->getSocket());
 
-    if ($info['timed_out']) {
+    if (!$info || $info['timed_out']) {
       $this->connected = false;
       return true;
     }

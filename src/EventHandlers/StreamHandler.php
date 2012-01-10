@@ -18,13 +18,15 @@ class StreamHandler implements EventReceiver
   public function onEvent($eventName, $that)
   {
     $response   = $that->getResponse();
-    $socket     = $that->getSocket();
     $connection = $that->getConnection();
+    $socket     = $that->getSocket();
 
 
     switch($eventName) {
       case 'stream:stream':
         $this->sessionId = $response->getAttribute('id');
+        // initiating stream
+        // next: starttls
         break;
 
       case 'stream:features':
@@ -57,6 +59,7 @@ class StreamHandler implements EventReceiver
 
         if ($xmlns == 'urn:ietf:params:xml:ns:xmpp-tls') {
           $connection->send('<starttls xmlns="urn:ietf:params:xml:ns:xmpp-tls"/>');
+          // next: proceed
         }
         break;
 
@@ -67,7 +70,8 @@ class StreamHandler implements EventReceiver
           $connection->sendStart();
           $this->waitForSASL = true;
           // now we wait for the new stream response
-          // stream:features MUST NOT contain starttls now (see the case 'stream:features')
+          // next: stream:features -> MUST NOT contain starttls tag!
+
         }
         break;
 
@@ -87,10 +91,18 @@ class StreamHandler implements EventReceiver
         break;
 
       case 'bind':
-        // <bind> is inside <stream:features>
-        if ($response->getAttributeFromTag('xmlns', 'bind') == 'urn:ietf:params:xml:ns:xmpp-bind') {
-          $connection->setAuthStatus(true);
+        if (!$response->hasTag('jid') && $response->getAttribute('xmlns') == 'urn:ietf:params:xml:ns:xmpp-bind') {
+            $id = $connection->UID();
+            $connection->send('<iq id="%s" type="set"><bind xmlns="urn:ietf:params:xml:ns:xmpp-bind"/></iq>', array($id));
+            $connection->bindIdToEvent($id, 'bound', $this);
         }
+        break;
+
+      case 'bound':
+        Logger::log('Successfully authed and connected');
+        $jid = $response->getTag('jid');
+        $connection->setJID($jid);
+        $connection->setAuthStatus(true);
         break;
     }
   }

@@ -33,11 +33,11 @@ class EventObject
    */
   protected $connection;
 
-  public function __construct(Socket $socket, ResponseObject $result, Connection $conn)
+  public function __construct(ResponseObject $result, Connection $conn)
   {
-    $this->setSocket($socket);
     $this->setResponse($result);
     $this->setConnection($conn);
+    $this->setSocket($conn->getSocket());
   }
 
   public function setResponse($array)
