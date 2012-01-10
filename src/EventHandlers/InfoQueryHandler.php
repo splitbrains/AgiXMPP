@@ -11,6 +11,9 @@ use XMPP\EventHandlers\EventReceiver;
 
 class InfoQueryHandler implements EventReceiver
 {
+
+  const XMPP_NAMESPACE_PING = 'urn:xmpp:ping';
+
   /**
    * @param $eventName
    * @param EventObject $that
@@ -18,13 +21,11 @@ class InfoQueryHandler implements EventReceiver
   public function onEvent($eventName, $that)
   {
     $response = $that->getResponse();
-    if ($eventName == 'iq') {
-      if ($response->hasTag('ping')) {
-        $id = $response->getAttribute('id');
-        $from = $response->getAttribute('from');
+    if ($eventName == 'iq' && $response->hasTag('ping') && $response->getAttributeFromTag('xmlns', 'ping') == self::XMPP_NAMESPACE_PING) {
+      $id = $response->getAttribute('id');
+      $from = $response->getAttribute('from');
 
-        $that->getConnection()->send('<iq type="result" id="%s" to="%s" />', array($id, $from));
-      }
+      $that->getConnection()->send('<iq type="result" id="%s" to="%s" />', array($id, $from));
     }
   }
 }
