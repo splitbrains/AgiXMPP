@@ -88,6 +88,10 @@ class Connection
 
   const XMPP_PROTOCOL_VERSION = '1.0';
 
+  const XMPP_STREAM_NAMESPACE = 'jabber:client';
+
+  const XMPP_STREAM_NAMESPACE_STREAM = 'http://etherx.jabber.org/streams';
+
   /**
    * @param array $config
    */
@@ -134,13 +138,8 @@ class Connection
 
   public function sendStart()
   {
-    $conf = array($this->getHost(), $this->getUser(), self::XMPP_PROTOCOL_VERSION);
-    $this->send('<stream:stream to="%s" from="%s" version="%s" xmlns="jabber:client" xmlns:stream="http://etherx.jabber.org/streams">', $conf);
-  }
-
-  public function sendPing()
-  {
-    $this->send('<iq type="get" id="%s" from="%s"><ping xmlns="urn:xmpp:ping"/></iq>', array($this->getUser()));
+    $conf = array($this->getHost(), $this->getUser(), self::XMPP_PROTOCOL_VERSION, self::XMPP_STREAM_NAMESPACE, self::XMPP_STREAM_NAMESPACE_STREAM);
+    $this->send('<stream:stream to="%s" from="%s" version="%s" xmlns="%s" xmlns:stream="%s">', $conf);
   }
 
   public function UID()
@@ -253,6 +252,16 @@ class Connection
   public function bindIdToEvent($id, $triggerEvent, EventReceiver $eventHandler)
   {
     $this->_trigger_handlers[$id] = array('trigger' => $triggerEvent, 'handler' => $eventHandler);
+  }
+
+  public function addGlobalEvent()
+  {
+
+  }
+
+  public function triggerGlobalEvent()
+  {
+
   }
 
   /**
