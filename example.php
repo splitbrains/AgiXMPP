@@ -5,5 +5,6 @@ $config = require_once (!file_exists('config.mine.php') ? 'config.php' : 'config
 
 $xmpp = new XMPP\Client($config);
 $xmpp->connect();
+$xmpp->init();
 
-$xmpp->main();
+$xmpp->disconnect();

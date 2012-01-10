@@ -3,15 +3,29 @@ namespace XMPP;
 
 class Logger
 {
-  public static $prefix = '[Log]';
-
   public static $enabled = true;
 
-  public static function Log($msg, $type = 'INFO')
+  public static function log($msg, $type = 'INFO')
   {
     if (self::$enabled) {
-      printf('%s %s: %s', self::$prefix, $type, $msg);
-      print PHP_EOL;
+      self::write(sprintf('%s %s: %s', '[Log]', $type, $msg));
     }
+  }
+
+  public static function err($msg, $exit = false)
+  {
+    if (self::$enabled) {
+      self::write('[Err] '.$msg);
+
+      if ($exit) {
+        exit;
+      }
+    }
+  }
+
+  protected static function write($completeMsg)
+  {
+    print $completeMsg;
+    print PHP_EOL;
   }
 }
