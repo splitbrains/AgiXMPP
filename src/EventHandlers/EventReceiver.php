@@ -1,8 +1,15 @@
 <?php
-
 namespace XMPP\EventHandlers;
 
+/**
+ *
+ */
 interface EventReceiver
 {
-  public function onEvent($eventName, $context);
+  /**
+   * @abstract
+   * @param $eventName
+   * @param $that EventObject
+   */
+  public function onEvent($eventName, $that);
 }
