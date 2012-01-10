@@ -59,14 +59,29 @@ class Connection
   protected $XMLParser;
 
   /**
+   * @var string
+   */
+  protected $JID;
+
+  /**
    * @var array The event handlers
    */
   protected $_handlers = array();
 
   /**
+   * @var array The handlers which will be triggered by binding to an ID
+   */
+  protected $_trigger_handlers = array();
+
+  /**
    * @var string The queue buffer
    */
   protected $_received_buffer = '';
+
+  /**
+   * @var int
+   */
+  protected $_uid = 0;
 
 
   protected $auth_status = false;
@@ -123,6 +138,16 @@ class Connection
     $this->send('<stream:stream to="%s" from="%s" version="%s" xmlns="jabber:client" xmlns:stream="http://etherx.jabber.org/streams">', $conf);
   }
 
+  public function sendPing()
+  {
+    $this->send('<iq type="get" id="%s" from="%s"><ping xmlns="urn:xmpp:ping"/></iq>', array($this->getUser()));
+  }
+
+  public function UID()
+  {
+    return 'agixmpp'.$this->_uid++;
+  }
+
   public function init()
   {
     $this->main();
@@ -136,7 +161,6 @@ class Connection
   protected function main()
   {
     $this->registerDefaultHandlers();
-    $socket = $this->getSocket();
 
     do {
       // Start time, to determine if we have a timeout
@@ -146,27 +170,45 @@ class Connection
         $buf = $this->XMLParser->parse($this->getBuffer());
 
         if ($buf !== false) {
-          foreach($this->getEventHandlers() as $event => $handlers) {
-            $response = $this->XMLParser->getResponse($buf);
-
-            // filter out the specific event from array
-            if ($response->filter($event)) {
-              $context = new EventObject($socket, $response, $this);
-
-              /** @var $handler EventReceiver */
-              foreach($handlers as $handler) {
-                $handler->onEvent($event, $context);
-              }
-            }
-          }
+          $response = $this->XMLParser->getResponse($buf);
+          $this->handleEvents($response);
         }
       }
       $this->clearBuffer();
       $this->sleep();
-    } while(!$socket->hasTimedOut($start) && $socket->isConnected());
+    } while(!$this->getSocket()->hasTimedOut($start) && $this->getSocket()->isConnected());
 
     // end of main loop
     return true;
+  }
+
+  /**
+   * @param ResponseObject $response
+   */
+  protected function handleEvents(ResponseObject $response)
+  {
+    foreach($this->getTriggerEvents() as $id => $data) {
+      if ($response->hasAttribute('id', $id)) {
+        $context = new EventObject($response, $this);
+
+        $handler = $data['handler'];
+        $trigger = $data['trigger'];
+
+        $handler->onEvent($trigger, $context);
+      }
+    }
+
+    foreach($this->getEventHandlers() as $event => $handlers) {
+      // filter out the specific event for the response object
+      if ($response->setFilter($event)) {
+        $context = new EventObject($response, $this);
+
+        /** @var $handler EventReceiver */
+        foreach($handlers as $handler) {
+          $handler->onEvent($event, $context);
+        }
+      }
+    }
   }
 
   protected function listen()
@@ -183,6 +225,7 @@ class Connection
     return false;
   }
 
+
   protected function getBuffer()
   {
     return $this->_received_buffer;
@@ -195,11 +238,29 @@ class Connection
 
   protected function registerDefaultHandlers()
   {
-    $this->addEventHandlers(array('stream:stream', 'stream:features', 'stream:error', 'starttls', 'proceed', 'success', 'failure', 'bind'), new StreamHandler());
-    $this->addEventHandlers(array('iq', 'ping'), new InfoQueryHandler());
-    //$this->addEventHandler('presence', array($this, '_event_presence'));
-    //$this->addEventHandler('iq', array($this, '_event_iq'));
-    //$this->addEventHandler('message', array($this, '_event_message'));
+    $streamHandler = new StreamHandler();
+    $iqHandler     = new InfoQueryHandler();
+
+    $this->addEventHandlers(array('stream:stream', 'stream:features', 'stream:error', 'starttls', 'proceed', 'success', 'failure', 'bind'), $streamHandler);
+    $this->addEventHandlers(array('iq', 'ping'), $iqHandler);
+  }
+
+  /**
+   * @param $id
+   * @param $triggerEvent
+   * @param EventHandlers\EventReceiver $eventHandler
+   */
+  public function bindIdToEvent($id, $triggerEvent, EventReceiver $eventHandler)
+  {
+    $this->_trigger_handlers[$id] = array('trigger' => $triggerEvent, 'handler' => $eventHandler);
+  }
+
+  /**
+   * @return array
+   */
+  public function getTriggerEvents()
+  {
+    return $this->_trigger_handlers;
   }
 
   /**
@@ -208,16 +269,6 @@ class Connection
   protected function getEventHandlers()
   {
     return $this->_handlers;
-  }
-
-
-  /**
-   * @param string $event
-   * @param EventHandlers\EventReceiver $eventHandler
-   */
-  public function addEventHandler($event, EventReceiver $eventHandler)
-  {
-    $this->_handlers[$event][] = $eventHandler;
   }
 
   /**
@@ -388,5 +439,21 @@ class Connection
   public function getAuthStatus()
   {
     return $this->auth_status;
+  }
+
+  /**
+   * @param string $JID
+   */
+  public function setJID($JID)
+  {
+    $this->JID = $JID;
+  }
+
+  /**
+   * @return string
+   */
+  public function getJID()
+  {
+    return $this->JID;
   }
 }
