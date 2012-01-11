@@ -36,15 +36,9 @@ abstract class EventReceiver
   abstract public function onTrigger($trigger);
 
   /**
-   * @param EventObject $obj
+   * @param \XMPP\ResponseObject $response
+   * @param \XMPP\Connection $connection
    */
-  public function setEventObject(EventObject $obj)
-  {
-    $this->response   = $obj->getResponse();
-    $this->connection = $obj->getConnection();
-    $this->socket     = $obj->getSocket();
-  }
-
   public function setObjects(ResponseObject $response, Connection $connection)
   {
     $this->response   = $response;
