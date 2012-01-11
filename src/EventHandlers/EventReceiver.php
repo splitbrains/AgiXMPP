@@ -43,6 +43,30 @@ abstract class EventReceiver
   }
 
   /**
+   * @param \XMPP\Connection $connection
+   */
+  public function setConnection($connection)
+  {
+    $this->connection = $connection;
+  }
+
+  /**
+   * @param \XMPP\ResponseObject $response
+   */
+  public function setResponse($response)
+  {
+    $this->response = $response;
+  }
+
+  /**
+   * @param \XMPP\Socket $socket
+   */
+  public function setSocket($socket)
+  {
+    $this->socket = $socket;
+  }
+
+  /**
    * @return \XMPP\Connection
    */
   public function getConnection()

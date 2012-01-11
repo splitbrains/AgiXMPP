@@ -43,11 +43,6 @@ class Connection
   protected $resource;
 
   /**
-   * @var string @TODO ?
-   */
-  protected $domain;
-
-  /**
    * @var \XMPP\Socket The basic socket stream
    */
   protected $socket;
@@ -56,11 +51,6 @@ class Connection
    * @var \XMPP\Logger
    */
   protected $Logger;
-
-  /**
-   * @var \XMPP\XMLParser
-   */
-  protected $XMLParser;
 
   /**
    * @var array The list of all registered handlers
@@ -87,11 +77,6 @@ class Connection
    */
   protected $_received_buffer = '';
 
-  /**
-   * @var int For unique ID increnment
-   */
-  protected $_uid = 0;
-
   ///// Variables changed by the event handlers
 
   /**
@@ -99,19 +84,10 @@ class Connection
    */
   protected $JID;
 
-
   /**
    * @var bool
    */
   protected $auth_status = false;
-
-
-  // constants for XMPP namespaces and stuff
-  const XMPP_PROTOCOL_VERSION = '1.0';
-
-  const XMPP_STREAM_NAMESPACE = 'jabber:client';
-
-  const XMPP_STREAM_NAMESPACE_STREAM = 'http://etherx.jabber.org/streams';
 
   /**
    * @param array $config
@@ -122,12 +98,9 @@ class Connection
     $this->setPort($config['port']);
     $this->setUser($config['user']);
     $this->setPass($config['pass']);
-    $this->setDomain($config['server']);
     $this->setResource($config['resource']);
 
-    $this->XMLParser = new XMLParser();
-    $this->socket    = new Socket();
-
+    $this->setSocket(new Socket());
     $this->registerDefaultHandlers();
   }
 
@@ -158,13 +131,81 @@ class Connection
   }
 
   /**
+   * @param bool $closeStream
+   */
+  public function disconnect($closeStream = false)
+  {
+    if ($closeStream) {
+      $this->getSocket()->write('</stream:stream>');
+    }
+    $this->getSocket()->close();
+    Logger::log('Disconnected');
+  }
+
+  /**
    * Generates an unique identifier for outgoing stanzas
    *
    * @return string
    */
   public function UID()
   {
-    return 'agixmpp'.substr(md5($this->_uid++), -5);
+    return substr(uniqid('agixmpp'), 0, -5);
+  }
+
+  /**
+   * @return bool
+   */
+  protected function receive()
+  {
+    $buf = $this->getSocket()->read();
+    if ($buf !== false) {
+      if ($buf == '</stream:stream>') {
+        $this->getSocket()->close();
+      } else {
+        $this->_received_buffer = $buf;
+        return true;
+      }
+    }
+    return false;
+  }
+
+  /**
+   * @param string $data
+   * @param array $args
+   */
+  public function send($data, $args = array())
+  {
+    if (count($args) > 0) {
+      $data = vsprintf($data, $args);
+    }
+    $this->getSocket()->write($data);
+  }
+
+  /**
+   * @return string
+   */
+  protected function getReceived()
+  {
+    return $this->_received_buffer;
+  }
+
+  /**
+   *
+   */
+  protected function clearReceived()
+  {
+    $this->_received_buffer = '';
+  }
+
+  /**
+   * Let the main loop sleep a bit to reduce the load
+   *
+   * @param int $min
+   * @param int $max
+   */
+  protected function sleep($min = 100, $max = 500)
+  {
+    usleep(mt_rand($min, $max) * 1000);
   }
 
   /**
@@ -176,16 +217,18 @@ class Connection
   {
     $this->triggerEvent(TRIGGER_INIT_STREAM);
 
+    $xmlParser = new XMLParser();
     do {
-      if ($this->listen()) {
-        $buf = $this->XMLParser->parse($this->getBuffer());
+      if ($this->receive()) {
+        $buf = $xmlParser->parse($this->getReceived());
 
         if ($buf !== false) {
-          $response = $this->XMLParser->getResponse($buf);
+          $response = $xmlParser->getResponse($buf);
+
           $this->handleEvents($response);
         }
       }
-      $this->clearBuffer();
+      $this->clearReceived();
       $this->sleep();
     } while(!$this->getSocket()->hasTimedOut() && $this->getSocket()->isConnected());
 
@@ -238,39 +281,6 @@ class Connection
   }
 
   /**
-   * @return bool
-   */
-  protected function listen()
-  {
-    $buf = $this->getSocket()->read();
-    if ($buf !== false) {
-      if ($buf == '</stream:stream>') {
-        $this->getSocket()->close();
-      } else {
-        $this->_received_buffer = $buf;
-        return true;
-      }
-    }
-    return false;
-  }
-
-  /**
-   * @return string
-   */
-  protected function getBuffer()
-  {
-    return $this->_received_buffer;
-  }
-
-  /**
-   *
-   */
-  protected function clearBuffer()
-  {
-    $this->_received_buffer = '';
-  }
-
-  /**
    *
    */
   protected function registerDefaultHandlers()
@@ -288,10 +298,20 @@ class Connection
    * @param $id
    * @param $boundEvent
    * @param \XMPP\EventHandlers\EventReceiver $eventHandler
+   *
+   * @todo make it more flexible, with custom attr name?
    */
   public function bindIdToEvent($id, $boundEvent, EventReceiver $eventHandler)
   {
     $this->_bound_handlers[$id] = array('bound' => $boundEvent, 'handler' => $eventHandler);
+  }
+
+  /**
+   * @return array
+   */
+  public function getBoundEvents()
+  {
+    return $this->_bound_handlers;
   }
 
   /**
@@ -308,14 +328,6 @@ class Connection
   protected function clearTriggers()
   {
     $this->_triggers = array();
-  }
-
-  /**
-   * @return array
-   */
-  public function getBoundEvents()
-  {
-    return $this->_bound_handlers;
   }
 
   /**
@@ -349,47 +361,13 @@ class Connection
     }
   }
 
-  /**
-   * @param string $data
-   * @param array $args
-   */
-  public function send($data, $args = array())
-  {
-    if (count($args) > 0) {
-      $data = vsprintf($data, $args);
-    }
-    $this->getSocket()->write($data);
-  }
 
   /**
-   * @param bool $closeStream
+   * @param \XMPP\Socket $socket
    */
-  public function disconnect($closeStream = false)
+  public function setSocket(Socket $socket)
   {
-    if ($closeStream) {
-      $this->getSocket()->write('</stream:stream>');
-    }
-    $this->getSocket()->close();
-    Logger::log('Disconnected');
-  }
-
-  /**
-   * Let the main loop sleep a bit to reduce the load
-   *
-   * @param int $min
-   * @param int $max
-   */
-  protected function sleep($min = 100, $max = 500)
-  {
-    usleep(mt_rand($min, $max) * 1000);
-  }
-  
-  /**
-   * @return \XMPP\Socket
-   */
-  public function getSocket()
-  {
-    return $this->socket;
+    $this->socket = $socket;
   }
 
   /**
@@ -398,30 +376,6 @@ class Connection
   public function setHost($host)
   {
     $this->host = $host;
-  }
-
-  /**
-   * @return string
-   */
-  public function getHost()
-  {
-    return $this->host;
-  }
-
-  /**
-   * @param string $pass
-   */
-  public function setPass($pass)
-  {
-    $this->pass = $pass;
-  }
-
-  /**
-   * @return string
-   */
-  public function getPass()
-  {
-    return $this->pass;
   }
 
   /**
@@ -435,11 +389,19 @@ class Connection
   }
 
   /**
-   * @return int
+   * @param string $user
    */
-  public function getPort()
+  public function setUser($user)
   {
-    return $this->port;
+    $this->user = $user;
+  }
+
+  /**
+   * @param string $pass
+   */
+  public function setPass($pass)
+  {
+    $this->pass = $pass;
   }
 
   /**
@@ -451,35 +413,35 @@ class Connection
   }
 
   /**
+   * @param string $JID
+   */
+  public function setJID($JID)
+  {
+    $this->JID = $JID;
+  }
+
+  /**
+   * @return \XMPP\Socket
+   */
+  public function getSocket()
+  {
+    return $this->socket;
+  }
+
+  /**
    * @return string
    */
-  public function getResource()
+  public function getHost()
   {
-    return $this->resource;
+    return $this->host;
   }
 
   /**
-   * @param string $server
+   * @return int
    */
-  public function setDomain($server)
+  public function getPort()
   {
-    $this->domain = $server;
-  }
-
-  /**
-   * @return string
-   */
-  public function getDomain()
-  {
-    return $this->domain;
-  }
-
-  /**
-   * @param string $user
-   */
-  public function setUser($user)
-  {
-    $this->user = $user;
+    return $this->port;
   }
 
   /**
@@ -489,6 +451,32 @@ class Connection
   {
     return $this->user;
   }
+
+  /**
+   * @return string
+   */
+  public function getPass()
+  {
+    return $this->pass;
+  }
+
+  /**
+   * @return string
+   */
+  public function getResource()
+  {
+    return $this->resource;
+  }
+
+  /**
+   * @return string
+   */
+  public function getJID()
+  {
+    return $this->JID;
+  }
+
+
 
   /**
    * @param bool $auth_status
@@ -504,21 +492,5 @@ class Connection
   public function getAuthStatus()
   {
     return $this->auth_status;
-  }
-
-  /**
-   * @param string $JID
-   */
-  public function setJID($JID)
-  {
-    $this->JID = $JID;
-  }
-
-  /**
-   * @return string
-   */
-  public function getJID()
-  {
-    return $this->JID;
   }
 }
