@@ -5,5 +5,6 @@
  * @internal UTF-Chars: ÄÖÜäöüß∆
  * created on 11.01.12 10:09.
  */
- 
-define('TRIGGER_SESSION_STARTED', 0);
+
+define('TRIGGER_INIT_STREAM', 0);
+define('TRIGGER_SESSION_STARTED', 1);
