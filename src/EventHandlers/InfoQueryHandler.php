@@ -9,23 +9,27 @@ namespace XMPP\EventHandlers;
 
 use XMPP\EventHandlers\EventReceiver;
 
-class InfoQueryHandler implements EventReceiver
+class InfoQueryHandler extends EventReceiver
 {
 
   const XMPP_NAMESPACE_PING = 'urn:xmpp:ping';
 
   /**
-   * @param $eventName
-   * @param EventObject $that
+   * @param string $eventName
    */
-  public function onEvent($eventName, $that)
+  public function onEvent($eventName)
   {
-    $response = $that->getResponse();
+    $response = $this->getResponse();
     if ($eventName == 'iq' && $response->hasTag('ping') && $response->getAttributeFromTag('xmlns', 'ping') == self::XMPP_NAMESPACE_PING) {
       $id = $response->getAttribute('id');
       $from = $response->getAttribute('from');
 
-      $that->getConnection()->send('<iq type="result" id="%s" to="%s" />', array($id, $from));
+      $this->getConnection()->send('<iq type="result" id="%s" to="%s" />', array($id, $from));
     }
   }
+
+  /**
+   * @param string $trigger
+   */
+  public function onTrigger($trigger) {}
 }

@@ -26,9 +26,9 @@ class Socket
   }
 
   /**
-   * @param $protocol
-   * @param $host
-   * @param $port
+   * @param string $protocol
+   * @param string $host
+   * @param int $port
    * @param bool $persistent
    *
    * @return bool
@@ -64,6 +64,9 @@ class Socket
     }
   }
 
+  /**
+   * @return bool
+   */
   public function isConnected()
   {
     return $this->connected;
@@ -120,12 +123,10 @@ class Socket
   }
 
   /**
-   * @param int $start
    * @return bool
    */
-  public function hasTimedOut($start)
+  public function hasTimedOut()
   {
-    $diff = microtime(true) - $start;
     $info = @stream_get_meta_data($this->getSocket());
 
     if (!$info || $info['timed_out']) {

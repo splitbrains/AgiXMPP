@@ -8,14 +8,9 @@
 namespace XMPP\EventHandlers;
 
 
-use XMPP\Socket;
-use XMPP\Connection;
-use XMPP\ResponseObject;
-
-
-use RecursiveIteratorIterator;
-use RecursiveArrayIterator;
-
+/**
+ * All neccessary information for the event handlers are wrapped in here and given to the EventReceiver
+ */
 class EventObject
 {
   /**
@@ -33,7 +28,11 @@ class EventObject
    */
   protected $connection;
 
-  public function __construct(ResponseObject $result, Connection $conn)
+  /**
+   * @param \XMPP\ResponseObject $result
+   * @param \XMPP\Connection $conn
+   */
+  public function __construct(\XMPP\ResponseObject $result, \XMPP\Connection $conn)
   {
     $this->setResponse($result);
     $this->setConnection($conn);

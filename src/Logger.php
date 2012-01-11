@@ -3,7 +3,7 @@ namespace XMPP;
 
 class Logger
 {
-  public static $enabled = false;
+  public static $enabled = true;
 
   public static $allowExit = true;
 

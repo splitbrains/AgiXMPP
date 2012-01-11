@@ -6,8 +6,8 @@ use XMPP\ResponseObject;
 class XMLParser
 {
   /**
-   * @param $xml
-   * @return array|bool
+   * @param string $xml
+   * @return mixed
    */
   public function parse($xml)
   {
@@ -26,6 +26,10 @@ class XMLParser
     return $this->xml2array($values);
   }
 
+  /**
+   * @param $parsed
+   * @return \XMPP\ResponseObject
+   */
   public function getResponse($parsed)
   {
     return new ResponseObject($parsed);
@@ -35,10 +39,10 @@ class XMLParser
    * Taken from http://www.bin-co.com/php/scripts/xml2array/
    * BSD Licenced
    *
-   * @param $values
+   * @param array $values
    * @param int $get_attributes
    * @param string $priority
-   * @return array|bool
+   * @return mixed
    */
   function xml2array($values, $get_attributes = 1, $priority = 'tag') {
     if (!$values) {
