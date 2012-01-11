@@ -248,20 +248,22 @@ class Connection
         $handler = $data['handler'];
         $bound   = $data['bound'];
 
-        $context = new EventObject($response, $this);
-        $handler->setEventObject($context);
-        $handler->onEvent($bound, $context);
+        //$context = new EventObject($response, $this);
+        //$handler->setEventObject($context);
+        $handler->setObjects($response, $this);
+        $handler->onEvent($bound);
       }
     }
 
     foreach($this->getEventHandlers() as $event => $handlers) {
       // filter out the specific event for the response object
       if ($response->setFilter($event)) {
-        $context = new EventObject($response, $this);
+        //$context = new EventObject($response, $this);
 
         foreach($handlers as $handler) {
-          $handler->setEventObject($context);
-          $handler->onEvent($event, $context);
+          //$handler->setEventObject($context);
+          $handler->setObjects($response, $this);
+          $handler->onEvent($event);
         }
       }
     }
@@ -274,8 +276,9 @@ class Connection
   {
     /** @var $handler \XMPP\EventHandlers\EventReceiver */
     foreach($this->_handlers as $handler) {
-      $context = new EventObject(new ResponseObject(array()), $this);
-      $handler->setEventObject($context);
+      //$context = new EventObject(new ResponseObject(array()), $this);
+      //$handler->setEventObject($context);
+      $handler->setObjects(new ResponseObject(array()), $this);
       $handler->onTrigger($trigger);
     }
   }
