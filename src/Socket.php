@@ -81,7 +81,7 @@ class Socket
     $r = array($this->socket);
     $w = $e = $sec = null;
 
-    $isUpdated = stream_select($r, $w, $e, $sec);
+    $isUpdated = @stream_select($r, $w, $e, $sec);
 
     if ($isUpdated > 0) {
       $buf = trim(fread($this->socket, $bytes));
@@ -103,7 +103,7 @@ class Socket
     $w = array($this->socket);
     $r = $e = $sec = null;
 
-    $mayWrite = stream_select($r, $w, $e, $sec);
+    $mayWrite = @stream_select($r, $w, $e, $sec);
 
     if ($mayWrite > 0) {
       Logger::log($data, 'SENT');
@@ -119,7 +119,9 @@ class Socket
   public function setCrypt($activate = true)
   {
     Logger::log('Enabling SSL v2/3');
-    stream_socket_enable_crypto($this->socket, $activate, STREAM_CRYPTO_METHOD_SSLv23_CLIENT);
+    if (!stream_socket_enable_crypto($this->socket, $activate, STREAM_CRYPTO_METHOD_SSLv23_CLIENT)) {
+      Logger::err('Server does not support SSL encryption.', true);
+    }
   }
 
   /**

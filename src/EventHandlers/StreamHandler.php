@@ -1,6 +1,7 @@
 <?php
 namespace XMPP\EventHandlers;
 
+use XMPP\Connection;
 use XMPP\EventHandlers\EventReceiver;
 use XMPP\Logger;
 
@@ -80,7 +81,7 @@ class StreamHandler extends EventReceiver
         if ($response->getAttribute('xmlns') == self::XMPP_NAMESPACE_TLS) {
           $socket->setCrypt(true);
           // we MUST send a new stream without creating a new TCP connection
-          $connection->sendStart();
+          $this->trigger(TRIGGER_INIT_STREAM);
           $this->waitForSASL = true;
           // now we wait for the new stream response
           // next: stream:features -> MUST NOT contain starttls tag!
@@ -91,7 +92,7 @@ class StreamHandler extends EventReceiver
       case 'success':
         if ($this->waitForAuthSuccess) {
           // we MUST send a new stream without creating a new TCP connection
-          $connection->sendStart();
+          $this->trigger(TRIGGER_INIT_STREAM);
           $this->waitForAuthSuccess = false;
         }
         break;
@@ -148,5 +149,12 @@ class StreamHandler extends EventReceiver
    *
    * @param string $trigger
    */
-  public function onTrigger($trigger) {}
+  public function onTrigger($trigger)
+  {
+    if ($trigger == TRIGGER_INIT_STREAM) {
+      //$this->getConnection()->send();
+      $conf = array($this->getConnection()->getHost(), $this->getConnection()->getUser(), Connection::XMPP_PROTOCOL_VERSION, Connection::XMPP_STREAM_NAMESPACE, Connection::XMPP_STREAM_NAMESPACE_STREAM);
+      $this->getConnection()->send('<stream:stream to="%s" from="%s" version="%s" xmlns="%s" xmlns:stream="%s">', $conf);
+    }
+  }
 }

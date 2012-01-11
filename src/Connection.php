@@ -127,6 +127,8 @@ class Connection
 
     $this->XMLParser = new XMLParser();
     $this->socket    = new Socket();
+
+    $this->registerDefaultHandlers();
   }
 
   /**
@@ -138,7 +140,7 @@ class Connection
     Logger::log('Attempting to connect to '.$this->getHost().':'.$this->getPort().'.');
 
     if ($conn) {
-      $this->sendStart();
+      $this->main();
     } else {
       Logger::err('Could not connect to host.', true);
     }
@@ -156,15 +158,6 @@ class Connection
   }
 
   /**
-   *
-   */
-  public function sendStart()
-  {
-    $conf = array($this->getHost(), $this->getUser(), self::XMPP_PROTOCOL_VERSION, self::XMPP_STREAM_NAMESPACE, self::XMPP_STREAM_NAMESPACE_STREAM);
-    $this->send('<stream:stream to="%s" from="%s" version="%s" xmlns="%s" xmlns:stream="%s">', $conf);
-  }
-
-  /**
    * Generates an unique identifier for outgoing stanzas
    *
    * @return string
@@ -174,11 +167,6 @@ class Connection
     return 'agixmpp'.substr(md5($this->_uid++), -5);
   }
 
-  public function init()
-  {
-    $this->main();
-  }
-
   /**
    * The core loop
    *
@@ -186,7 +174,7 @@ class Connection
    */
   protected function main()
   {
-    $this->registerDefaultHandlers();
+    $this->triggerEvent(TRIGGER_INIT_STREAM);
 
     do {
       if ($this->listen()) {
@@ -201,7 +189,6 @@ class Connection
       $this->sleep();
     } while(!$this->getSocket()->hasTimedOut() && $this->getSocket()->isConnected());
 
-    // end of main loop
     return true;
   }
 
