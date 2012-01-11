@@ -12,6 +12,11 @@ use XMPP\Logger;
  
 class PresenceHandler extends EventReceiver
 {
+  const SHOW_STATUS_AWAY = 'away';
+  const SHOW_STATUS_CHAT = 'chat';
+  const SHOW_STATUS_DND  = 'dnd';
+  const SHOW_STATUS_XA   = 'xa';
+
   /**
    * @param string $event
    */
@@ -27,6 +32,7 @@ class PresenceHandler extends EventReceiver
     switch($event) {
       case TRIGGER_SESSION_STARTED:
         // show presence
+        $this->getConnection()->send('<presence from="%s"><show>%s</show></presence>', array($this->getConnection()->getJID(), self::SHOW_STATUS_CHAT));
         break;
     }
   }
