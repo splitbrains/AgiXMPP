@@ -68,9 +68,9 @@ class Connection
   protected $_event_handlers = array();
 
   /**
-   * @var array The handlers which will be triggered by binding to an ID
+   * @var array
    */
-  protected $_bound_handlers = array();
+  protected $_custom_handlers = array();
 
   /**
    * @var string The queue buffer
@@ -224,11 +224,10 @@ class Connection
 
         if ($buf !== false) {
           $response = $xmlParser->getResponse($buf);
-
           $this->handleEvents($response);
         }
+        $this->clearReceived();
       }
-      $this->clearReceived();
       $this->sleep();
     } while(!$this->getSocket()->hasTimedOut() && $this->getSocket()->isConnected());
 
@@ -240,28 +239,21 @@ class Connection
    */
   protected function handleEvents(ResponseObject $response)
   {
-    foreach($this->getBoundEvents() as $id => $data) {
-      if ($response->hasAttribute('id', $id)) {
-        /**
-         * @var $handler \XMPP\EventHandlers\EventReceiver
-         */
+    foreach($this->getCustomEvents() as $key => $data) {
+      if ($response->hasAttribute($data['attr'], $data['value'])) {
+        /** @var $handler \XMPP\EventHandlers\EventReceiver */
         $handler = $data['handler'];
-        $bound   = $data['bound'];
-
-        //$context = new EventObject($response, $this);
-        //$handler->setEventObject($context);
         $handler->setObjects($response, $this);
-        $handler->onEvent($bound);
+        $handler->onEvent($data['customEventName']);
+
+        $this->unsetCustomEvent($key);
       }
     }
 
     foreach($this->getEventHandlers() as $event => $handlers) {
       // filter out the specific event for the response object
       if ($response->setFilter($event)) {
-        //$context = new EventObject($response, $this);
-
         foreach($handlers as $handler) {
-          //$handler->setEventObject($context);
           $handler->setObjects($response, $this);
           $handler->onEvent($event);
         }
@@ -275,9 +267,7 @@ class Connection
   public function triggerEvent($trigger)
   {
     /** @var $handler \XMPP\EventHandlers\EventReceiver */
-    foreach($this->_handlers as $handler) {
-      //$context = new EventObject(new ResponseObject(array()), $this);
-      //$handler->setEventObject($context);
+    foreach($this->getHandlers() as $handler) {
       $handler->setObjects(new ResponseObject(array()), $this);
       $handler->onTrigger($trigger);
     }
@@ -298,23 +288,73 @@ class Connection
   }
 
   /**
-   * @param $id
-   * @param $boundEvent
-   * @param \XMPP\EventHandlers\EventReceiver $eventHandler
+   * This is a one time custom handler; after the event was triggered it's thrown away.
+   * For re-usability one can use triggers
    *
-   * @todo make it more flexible, with custom attr name?
+   * @param string $attr
+   * @param string $value
+   * @param string $customEventName
+   * @param EventHandlers\EventReceiver $eventHandler
    */
-  public function bindIdToEvent($id, $boundEvent, EventReceiver $eventHandler)
+  public function addCustomHandler($attr, $value, $customEventName, EventReceiver $eventHandler)
   {
-    $this->_bound_handlers[$id] = array('bound' => $boundEvent, 'handler' => $eventHandler);
+    $this->_custom_handlers[] = array('attr' => $attr, 'value' => $value, 'customEventName' => $customEventName, 'handler' => $eventHandler);
   }
 
   /**
    * @return array
    */
-  public function getBoundEvents()
+  public function getCustomEvents()
   {
-    return $this->_bound_handlers;
+    return $this->_custom_handlers;
+  }
+
+  /**
+   * @param int $key
+   */
+  protected function unsetCustomEvent($key)
+  {
+    unset($this->_custom_handlers[$key]);
+    $this->_custom_handlers = array_values($this->_custom_handlers);
+  }
+
+  /**
+   * @param array $events
+   * @param \XMPP\EventHandlers\EventReceiver $eventHandler
+   */
+  public function addEventHandlers(array $events, EventReceiver $eventHandler)
+  {
+    $this->addHandler($eventHandler);
+
+    foreach($events as $event) {
+      $this->_event_handlers[$event][] = $eventHandler;
+    }
+  }
+
+  /**
+   * @return array
+   */
+  protected function getEventHandlers()
+  {
+    return $this->_event_handlers;
+  }
+
+  /**
+   * @param \XMPP\EventHandlers\EventReceiver $handler
+   */
+  protected function addHandler(EventReceiver $handler)
+  {
+    if (!in_array($handler, $this->_handlers)) {
+      $this->_handlers[] = $handler;
+    }
+  }
+
+  /**
+   * @return array
+   */
+  protected function getHandlers()
+  {
+    return $this->_handlers;
   }
 
   /**
@@ -332,38 +372,6 @@ class Connection
   {
     $this->_triggers = array();
   }
-
-  /**
-   * @return array
-   */
-  protected function getEventHandlers()
-  {
-    return $this->_event_handlers;
-  }
-
-  /**
-   * @param array $events
-   * @param \XMPP\EventHandlers\EventReceiver $eventHandler
-   */
-  public function addEventHandlers(array $events, EventReceiver $eventHandler)
-  {
-    $this->addHandler($eventHandler);
-
-    foreach($events as $event) {
-      $this->_event_handlers[$event][] = $eventHandler;
-    }
-  }
-
-  /**
-   * @param \XMPP\EventHandlers\EventReceiver $handler
-   */
-  protected function addHandler(EventReceiver $handler)
-  {
-    if (!in_array($handler, $this->_handlers)) {
-      $this->_handlers[] = $handler;
-    }
-  }
-
 
   /**
    * @param \XMPP\Socket $socket

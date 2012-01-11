@@ -117,12 +117,11 @@ class StreamHandler extends EventReceiver
             }
 
             $connection->send('<iq id="%s" type="set">%s</iq>', array($id, $binding));
-            $connection->bindIdToEvent($id, 'bound', $this);
+            $connection->addCustomHandler('id', $id, 'custom_bind_event', $this);
         }
         break;
 
-      // this event is registered with bindIdToEvent() in the event 'bind'
-      case 'bound':
+      case 'custom_bind_event':
         if ($response->getAttribute('type') == 'result') {
           Logger::log('Successfully authed and connected');
           $jid = $response->getTag('jid');
@@ -132,11 +131,11 @@ class StreamHandler extends EventReceiver
           if ($this->hasSessionFeature) {
             $id = $connection->UID();
             $connection->send('<iq id="%s" type="set"><session xmlns="%s"/></iq>', array($id, self::XMPP_NAMESPACE_SESSION));
-            $connection->bindIdToEvent($id, 'sessionStarted', $this);
+            $connection->addCustomHandler('id', $id, 'session_started', $this);
           }
         }
         break;
-      case 'sessionStarted':
+      case 'session_started':
         if ($response->getAttribute('type') == 'result') {
           Logger::log('Session started');
           $this->trigger(TRIGGER_SESSION_STARTED);
