@@ -244,6 +244,8 @@ class Connection
   {
     /** @var $handler \XMPP\EventHandlers\EventReceiver */
     foreach($this->_handlers as $handler) {
+      $context = new EventObject(new ResponseObject(array()), $this);
+      $handler->setEventObject($context);
       $handler->onTrigger($trigger);
     }
   }
