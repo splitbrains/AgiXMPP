@@ -1,6 +1,9 @@
 <?php
 namespace XMPP\EventHandlers;
 
+use XMPP\ResponseObject;
+use XMPP\Connection;
+
 abstract class EventReceiver
 {
   /**
@@ -40,6 +43,13 @@ abstract class EventReceiver
     $this->response   = $obj->getResponse();
     $this->connection = $obj->getConnection();
     $this->socket     = $obj->getSocket();
+  }
+
+  public function setObjects(ResponseObject $response, Connection $connection)
+  {
+    $this->response   = $response;
+    $this->connection = $connection;
+    $this->socket     = $connection->getSocket();
   }
 
   /**
