@@ -36,6 +36,9 @@ class ResponseObject
     $this->response = $response;
   }
 
+  /**
+   * @return array
+   */
   protected function getResponse()
   {
     if (count($this->filteredResponse) > 0) {
@@ -45,7 +48,7 @@ class ResponseObject
   }
 
   /**
-   * @param $event
+   * @param string $event
    * @return bool
    */
   public function setFilter($event) {
@@ -73,7 +76,12 @@ class ResponseObject
     return false;
   }
 
-  protected function findDeep($needle, $haystack)
+  /**
+   * @param string $needle
+   * @param array $haystack
+   * @return mixed
+   */
+  protected function findDeep($needle, array $haystack)
   {
     $iterator = new RecursiveIteratorIterator(new RecursiveArrayIterator($haystack), RecursiveIteratorIterator::SELF_FIRST);
 
@@ -87,16 +95,29 @@ class ResponseObject
     return false;
   }
 
+  /**
+   * @param string $string
+   * @return bool
+   */
   protected function isAttribute($string)
   {
     return substr($string, strlen($string) - strlen(self::ATTR_SUFFIX)) === self::ATTR_SUFFIX;
   }
 
+  /**
+   * @param string $string
+   * @return bool
+   */
   protected function isTag($string)
   {
     return !$this->isAttribute($string);
   }
 
+  /**
+   * @param string $attr
+   * @param string $check
+   * @return bool
+   */
   public function hasAttribute($attr, $check = '')
   {
     $response = $this->getResponse();
@@ -115,6 +136,10 @@ class ResponseObject
     return false;
   }
 
+  /**
+   * @param string $attr
+   * @return mixed
+   */
   public function getAttribute($attr)
   {
     $response = $this->getResponse();
@@ -129,16 +154,37 @@ class ResponseObject
     return false;
   }
 
+  /**
+   * @todo
+   */
+  public function getAttributes()
+  {
+    print_r($this->getResponse());
+  }
+
+  /**
+   * @param string $tag
+   * @return bool
+   */
   public function hasTag($tag)
   {
     return $this->findDeep($tag, $this->getResponse()) !== false;
   }
 
+  /**
+   * @param string $tag
+   * @return mixed
+   */
   public function getTag($tag)
   {
     return $this->findDeep($tag, $this->getResponse());
   }
 
+  /**
+   * @param string $attr
+   * @param string $tag
+   * @return mixed
+   */
   public function getAttributeFromTag($attr, $tag)
   {
     $found = $this->findDeep($tag.self::ATTR_SUFFIX, $this->getResponse());

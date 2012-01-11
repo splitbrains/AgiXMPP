@@ -4,12 +4,16 @@ namespace XMPP;
 use XMPP\Socket;
 use XMPP\Client;
 use XMPP\XMLParser;
+use XMPP\ResponseObject;
 use XMPP\Logger;
 
 use XMPP\EventHandlers\EventObject;
 use XMPP\EventHandlers\EventReceiver;
+
+// default handlers which are registered in registerDefaultHandlers()
 use XMPP\EventHandlers\StreamHandler;
 use XMPP\EventHandlers\InfoQueryHandler;
+use XMPP\EventHandlers\PresenceHandler;
 
 class Connection
 {
@@ -44,34 +48,39 @@ class Connection
   protected $domain;
 
   /**
-   * @var Socket The basic socket stream
+   * @var \XMPP\Socket The basic socket stream
    */
   protected $socket;
 
   /**
-   * @var Logger
+   * @var \XMPP\Logger
    */
   protected $Logger;
 
   /**
-   * @var XMLParser
+   * @var \XMPP\XMLParser
    */
   protected $XMLParser;
 
   /**
-   * @var string
-   */
-  protected $JID;
-
-  /**
-   * @var array The event handlers
+   * @var array The list of all registered handlers
    */
   protected $_handlers = array();
 
   /**
+   * @var array The list of events which should be triggered
+   */
+  protected $_triggers = array();
+
+  /**
+   * @var array The handlers in context with their events to wait for
+   */
+  protected $_event_handlers = array();
+
+  /**
    * @var array The handlers which will be triggered by binding to an ID
    */
-  protected $_trigger_handlers = array();
+  protected $_bound_handlers = array();
 
   /**
    * @var string The queue buffer
@@ -79,13 +88,25 @@ class Connection
   protected $_received_buffer = '';
 
   /**
-   * @var int
+   * @var int For unique ID increnment
    */
   protected $_uid = 0;
 
+  ///// Variables changed by the event handlers
 
+  /**
+   * @var string
+   */
+  protected $JID;
+
+
+  /**
+   * @var bool
+   */
   protected $auth_status = false;
 
+
+  // constants for XMPP namespaces and stuff
   const XMPP_PROTOCOL_VERSION = '1.0';
 
   const XMPP_STREAM_NAMESPACE = 'jabber:client';
@@ -110,8 +131,6 @@ class Connection
 
   /**
    * Connects to the host with the settings from the config (set in the constructor)
-   *
-   * @return void
    */
   public function connect()
   {
@@ -136,15 +155,23 @@ class Connection
     $this->connect();
   }
 
+  /**
+   *
+   */
   public function sendStart()
   {
     $conf = array($this->getHost(), $this->getUser(), self::XMPP_PROTOCOL_VERSION, self::XMPP_STREAM_NAMESPACE, self::XMPP_STREAM_NAMESPACE_STREAM);
     $this->send('<stream:stream to="%s" from="%s" version="%s" xmlns="%s" xmlns:stream="%s">', $conf);
   }
 
+  /**
+   * Generates an unique identifier for outgoing stanzas
+   *
+   * @return string
+   */
   public function UID()
   {
-    return 'agixmpp'.$this->_uid++;
+    return 'agixmpp'.substr(md5($this->_uid++), -5);
   }
 
   public function init()
@@ -162,9 +189,6 @@ class Connection
     $this->registerDefaultHandlers();
 
     do {
-      // Start time, to determine if we have a timeout
-      $start = microtime(true);
-
       if ($this->listen()) {
         $buf = $this->XMLParser->parse($this->getBuffer());
 
@@ -175,25 +199,28 @@ class Connection
       }
       $this->clearBuffer();
       $this->sleep();
-    } while(!$this->getSocket()->hasTimedOut($start) && $this->getSocket()->isConnected());
+    } while(!$this->getSocket()->hasTimedOut() && $this->getSocket()->isConnected());
 
     // end of main loop
     return true;
   }
 
   /**
-   * @param ResponseObject $response
+   * @param \XMPP\ResponseObject $response
    */
   protected function handleEvents(ResponseObject $response)
   {
-    foreach($this->getTriggerEvents() as $id => $data) {
+    foreach($this->getBoundEvents() as $id => $data) {
       if ($response->hasAttribute('id', $id)) {
-        $context = new EventObject($response, $this);
-
+        /**
+         * @var $handler \XMPP\EventHandlers\EventReceiver
+         */
         $handler = $data['handler'];
-        $trigger = $data['trigger'];
+        $bound   = $data['bound'];
 
-        $handler->onEvent($trigger, $context);
+        $context = new EventObject($response, $this);
+        $handler->setEventObject($context);
+        $handler->onEvent($bound, $context);
       }
     }
 
@@ -202,14 +229,28 @@ class Connection
       if ($response->setFilter($event)) {
         $context = new EventObject($response, $this);
 
-        /** @var $handler EventReceiver */
         foreach($handlers as $handler) {
+          $handler->setEventObject($context);
           $handler->onEvent($event, $context);
         }
       }
     }
   }
 
+  /**
+   * @param string $trigger
+   */
+  public function triggerEvent($trigger)
+  {
+    /** @var $handler \XMPP\EventHandlers\EventReceiver */
+    foreach($this->_handlers as $handler) {
+      $handler->onTrigger($trigger);
+    }
+  }
+
+  /**
+   * @return bool
+   */
   protected function listen()
   {
     $buf = $this->getSocket()->read();
@@ -224,52 +265,68 @@ class Connection
     return false;
   }
 
-
+  /**
+   * @return string
+   */
   protected function getBuffer()
   {
     return $this->_received_buffer;
   }
 
+  /**
+   *
+   */
   protected function clearBuffer()
   {
     $this->_received_buffer = '';
   }
 
+  /**
+   *
+   */
   protected function registerDefaultHandlers()
   {
-    $streamHandler = new StreamHandler();
-    $iqHandler     = new InfoQueryHandler();
+    $streamHandler   = new StreamHandler();
+    $iqHandler       = new InfoQueryHandler();
+    $presenceHandler = new PresenceHandler();
 
     $this->addEventHandlers(array('stream:stream', 'stream:features', 'stream:error', 'starttls', 'proceed', 'success', 'failure', 'bind'), $streamHandler);
     $this->addEventHandlers(array('iq', 'ping'), $iqHandler);
+    $this->addEventHandlers(array('presence'), $presenceHandler);
   }
 
   /**
    * @param $id
-   * @param $triggerEvent
-   * @param EventHandlers\EventReceiver $eventHandler
+   * @param $boundEvent
+   * @param \XMPP\EventHandlers\EventReceiver $eventHandler
    */
-  public function bindIdToEvent($id, $triggerEvent, EventReceiver $eventHandler)
+  public function bindIdToEvent($id, $boundEvent, EventReceiver $eventHandler)
   {
-    $this->_trigger_handlers[$id] = array('trigger' => $triggerEvent, 'handler' => $eventHandler);
-  }
-
-  public function addGlobalEvent()
-  {
-
-  }
-
-  public function triggerGlobalEvent()
-  {
-
+    $this->_bound_handlers[$id] = array('bound' => $boundEvent, 'handler' => $eventHandler);
   }
 
   /**
    * @return array
    */
-  public function getTriggerEvents()
+  protected function getTriggers()
   {
-    return $this->_trigger_handlers;
+    return $this->_triggers;
+  }
+
+  /**
+   *
+   */
+  protected function clearTriggers()
+  {
+    $this->_triggers = array();
+  }
+
+  /**
+   * @return array
+   */
+  public function getBoundEvents()
+  {
+    return $this->_bound_handlers;
   }
 
   /**
@@ -277,23 +334,34 @@ class Connection
    */
   protected function getEventHandlers()
   {
-    return $this->_handlers;
+    return $this->_event_handlers;
   }
 
   /**
    * @param array $events
-   * @param EventHandlers\EventReceiver $eventHandler
+   * @param \XMPP\EventHandlers\EventReceiver $eventHandler
    */
   public function addEventHandlers(array $events, EventReceiver $eventHandler)
   {
+    $this->addHandler($eventHandler);
+
     foreach($events as $event) {
-      $this->_handlers[$event][] = $eventHandler;
+      $this->_event_handlers[$event][] = $eventHandler;
     }
   }
 
+  /**
+   * @param \XMPP\EventHandlers\EventReceiver $handler
+   */
+  protected function addHandler(EventReceiver $handler)
+  {
+    if (!in_array($handler, $this->_handlers)) {
+      $this->_handlers[] = $handler;
+    }
+  }
 
   /**
-   * @param $data
+   * @param string $data
    * @param array $args
    */
   public function send($data, $args = array())
@@ -313,7 +381,6 @@ class Connection
       $this->getSocket()->write('</stream:stream>');
     }
     $this->getSocket()->close();
-    $this->connected = false;
     Logger::log('Disconnected');
   }
 

@@ -4,7 +4,7 @@ namespace XMPP\EventHandlers;
 use XMPP\EventHandlers\EventReceiver;
 use XMPP\Logger;
 
-class StreamHandler implements EventReceiver
+class StreamHandler extends EventReceiver
 {
   protected $sessionId;
   protected $waitForSASL = false;
@@ -18,16 +18,16 @@ class StreamHandler implements EventReceiver
   const XMPP_NAMESPACE_BIND = 'urn:ietf:params:xml:ns:xmpp-bind';
   const XMPP_NAMESPACE_SESSION = 'urn:ietf:params:xml:ns:xmpp-session';
 
-  /**
-   * @param $eventName
-   * @param $that EventObject
-   */
-  public function onEvent($eventName, $that)
-  {
-    $response   = $that->getResponse();
-    $connection = $that->getConnection();
-    $socket     = $that->getSocket();
 
+
+  /**
+   * @param string $eventName
+   */
+  public function onEvent($eventName)
+  {
+    $response   = $this->getResponse();
+    $connection = $this->getConnection();
+    $socket     = $this->getSocket();
 
     switch($eventName) {
       case 'stream:stream':
@@ -137,8 +137,16 @@ class StreamHandler implements EventReceiver
       case 'sessionStarted':
         if ($response->getAttribute('type') == 'result') {
           Logger::log('Session started');
+          $this->trigger(TRIGGER_SESSION_STARTED);
         }
         break;
     }
   }
+
+  /**
+   * not needed in here
+   *
+   * @param string $trigger
+   */
+  public function onTrigger($trigger) {}
 }
