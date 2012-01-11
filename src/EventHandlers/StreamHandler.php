@@ -11,15 +11,16 @@ class StreamHandler extends EventReceiver
   protected $waitForSASL = false;
   protected $waitForAuthSuccess = false;
   protected $waitForBind = false;
-
   protected $hasSessionFeature = false;
 
+  const XMPP_PROTOCOL_VERSION  = '1.0';
+  const XMPP_STANDARD_LANG     = 'en';
+  const XMPP_STREAM_NAMESPACE  = 'jabber:client';
+  const XMPP_STREAM_NAMESPACE_STREAM = 'http://etherx.jabber.org/streams';
   const XMPP_NAMESPACE_SASL = 'urn:ietf:params:xml:ns:xmpp-sasl';
   const XMPP_NAMESPACE_TLS  = 'urn:ietf:params:xml:ns:xmpp-tls';
   const XMPP_NAMESPACE_BIND = 'urn:ietf:params:xml:ns:xmpp-bind';
   const XMPP_NAMESPACE_SESSION = 'urn:ietf:params:xml:ns:xmpp-session';
-
-
 
   /**
    * @param string $eventName
@@ -145,15 +146,12 @@ class StreamHandler extends EventReceiver
   }
 
   /**
-   * not needed in here
-   *
    * @param string $trigger
    */
   public function onTrigger($trigger)
   {
     if ($trigger == TRIGGER_INIT_STREAM) {
-      //$this->getConnection()->send();
-      $conf = array($this->getConnection()->getHost(), $this->getConnection()->getUser(), Connection::XMPP_PROTOCOL_VERSION, Connection::XMPP_STREAM_NAMESPACE, Connection::XMPP_STREAM_NAMESPACE_STREAM);
+      $conf = array($this->getConnection()->getHost(), $this->getConnection()->getUser(), self::XMPP_PROTOCOL_VERSION, self::XMPP_STREAM_NAMESPACE, self::XMPP_STREAM_NAMESPACE_STREAM);
       $this->getConnection()->send('<stream:stream to="%s" from="%s" version="%s" xmlns="%s" xmlns:stream="%s">', $conf);
     }
   }
