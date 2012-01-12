@@ -215,7 +215,7 @@ class Connection
    */
   protected function main()
   {
-    $this->triggerEvent(TRIGGER_INIT_STREAM);
+    $this->trigger(TRIGGER_INIT_STREAM);
 
     $xmlParser = new XMLParser();
     do {
@@ -264,7 +264,7 @@ class Connection
   /**
    * @param string $trigger
    */
-  public function triggerEvent($trigger)
+  public function trigger($trigger)
   {
     /** @var $handler \XMPP\EventHandlers\EventReceiver */
     foreach($this->getHandlers() as $handler) {
@@ -301,10 +301,15 @@ class Connection
     $this->_custom_handlers[] = array('attr' => $attr, 'value' => $value, 'customEventName' => $customEventName, 'handler' => $eventHandler);
   }
 
+  public function addIdHandler($value, $customEventName, EventReceiver $eventHandler)
+  {
+    $this->addCustomHandler('id', $value, $customEventName, $eventHandler);
+  }
+
   /**
    * @return array
    */
-  public function getCustomEvents()
+  protected function getCustomEvents()
   {
     return $this->_custom_handlers;
   }
@@ -376,7 +381,7 @@ class Connection
   /**
    * @param \XMPP\Socket $socket
    */
-  public function setSocket(Socket $socket)
+  protected function setSocket(Socket $socket)
   {
     $this->socket = $socket;
   }
@@ -486,8 +491,6 @@ class Connection
   {
     return $this->JID;
   }
-
-
 
   /**
    * @param bool $auth_status

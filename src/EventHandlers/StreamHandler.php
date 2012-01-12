@@ -117,7 +117,7 @@ class StreamHandler extends EventReceiver
             }
 
             $connection->send('<iq id="%s" type="set">%s</iq>', array($id, $binding));
-            $connection->addCustomHandler('id', $id, 'custom_bind_event', $this);
+            $connection->addIdHandler($id, 'custom_bind_event', $this);
         }
         break;
 
@@ -131,7 +131,7 @@ class StreamHandler extends EventReceiver
           if ($this->hasSessionFeature) {
             $id = $connection->UID();
             $connection->send('<iq id="%s" type="set"><session xmlns="%s"/></iq>', array($id, self::XMPP_NAMESPACE_SESSION));
-            $connection->addCustomHandler('id', $id, 'session_started', $this);
+            $connection->addIdHandler($id, 'session_started', $this);
           }
         }
         break;
