@@ -99,6 +99,6 @@ abstract class EventReceiver
    */
   public function trigger($event)
   {
-    $this->getConnection()->triggerEvent($event);
+    $this->getConnection()->trigger($event);
   }
 }
