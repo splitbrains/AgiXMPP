@@ -20,16 +20,31 @@ class InfoQueryHandler extends EventReceiver
   public function onEvent($eventName)
   {
     $response = $this->getResponse();
+
     if ($eventName == 'iq' && $response->hasTag('ping') && $response->getAttributeFromTag('xmlns', 'ping') == self::XMPP_NAMESPACE_PING) {
       $id = $response->getAttribute('id');
       $from = $response->getAttribute('from');
 
       $this->getConnection()->send('<iq type="result" id="%s" to="%s" />', array($id, $from));
     }
+
+    if ($eventName == 'disco_items') {
+      //$response->setFilter('item');
+      print_r($response->getTag('item'));
+    }
   }
 
   /**
    * @param string $trigger
    */
-  public function onTrigger($trigger) {}
+  public function onTrigger($trigger)
+  {
+    switch($trigger) {
+      case TRIGGER_SESSION_STARTED:
+        $id = $this->getConnection()->UID();
+        $this->getConnection()->send('<iq type="get" id="%s"><query xmlns="http://jabber.org/protocol/disco#items"/></iq>', array($id));
+        $this->getConnection()->addIdHandler($id, 'disco_items', $this);
+        break;
+    }
+  }
 }

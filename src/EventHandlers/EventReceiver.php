@@ -9,17 +9,17 @@ abstract class EventReceiver
   /**
    * @var \XMPP\ResponseObject
    */
-  protected $response;
+  private $response;
 
   /**
    * @var \XMPP\Connection
    */
-  protected $connection;
+  private $connection;
 
   /**
    * @var \XMPP\Socket
    */
-  protected $socket;
+  private $socket;
 
   /**
    * Events are fired on rules
@@ -100,5 +100,10 @@ abstract class EventReceiver
   public function trigger($event)
   {
     $this->getConnection()->trigger($event);
+  }
+
+  public function addEvent($event)
+  {
+
   }
 }

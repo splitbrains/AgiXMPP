@@ -43,8 +43,8 @@ class Socket
     $this->socket = stream_socket_client(sprintf('%s://%s:%d', $protocol, $host, $port), $errno, $errstr, self::TIMEOUT, $flags);
 
     if ($this->socket) {
-      stream_set_timeout($this->socket, self::TIMEOUT);
-      stream_set_blocking($this->socket, 1);
+      //stream_set_timeout($this->socket, self::TIMEOUT);
+      //stream_set_blocking($this->socket, 1);
       $this->connected = true;
 
       return true;
@@ -81,7 +81,8 @@ class Socket
     $r = array($this->socket);
     $w = $e = $sec = null;
 
-    $isUpdated = @stream_select($r, $w, $e, $sec);
+    $isUpdated = stream_select($r, $w, $e, $sec);
+    var_dump($isUpdated);
 
     if ($isUpdated > 0) {
       $buf = trim(fread($this->socket, $bytes));
@@ -92,7 +93,7 @@ class Socket
     } elseif ($isUpdated === false) {
       Logger::err('Cannot read from stream.');
     }
-    //return false;
+    return false;
   }
 
   /**

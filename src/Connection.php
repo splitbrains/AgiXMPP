@@ -7,12 +7,12 @@ use XMPP\XMLParser;
 use XMPP\ResponseObject;
 use XMPP\Logger;
 
-use XMPP\EventHandlers\EventObject;
 use XMPP\EventHandlers\EventReceiver;
 
 // default handlers which are registered in registerDefaultHandlers()
 use XMPP\EventHandlers\StreamHandler;
 use XMPP\EventHandlers\InfoQueryHandler;
+use XMPP\EventHandlers\RosterHandler;
 use XMPP\EventHandlers\PresenceHandler;
 
 class Connection
@@ -41,6 +41,21 @@ class Connection
    * @var string The resource, which will be shown in the full JID (e.g. laptop, mobile, ..)
    */
   protected $resource;
+
+  /**
+   * @var string
+   */
+  protected $availability;
+
+  /**
+   * @var string
+   */
+  protected $priority;
+
+  /**
+   * @var string
+   */
+  protected $status;
 
   /**
    * @var \XMPP\Socket The basic socket stream
@@ -77,6 +92,13 @@ class Connection
    */
   protected $_received_buffer = '';
 
+  /**
+   * @var int
+   */
+  protected $_uid = 0;
+
+  protected $_invalid_xml = false;
+
   ///// Variables changed by the event handlers
 
   /**
@@ -99,6 +121,9 @@ class Connection
     $this->setUser($config['user']);
     $this->setPass($config['pass']);
     $this->setResource($config['resource']);
+    $this->setAvailability($config['availability']);
+    $this->setStatus($config['status']);
+    $this->setPriority($config['priority']);
 
     $this->setSocket(new Socket());
     $this->registerDefaultHandlers();
@@ -149,7 +174,34 @@ class Connection
    */
   public function UID()
   {
-    return substr(uniqid('agixmpp'), 0, -5);
+    return 'agixmpp_'.substr(md5(microtime().$this->_uid++), 0, 8);
+  }
+
+  /**
+   * The core loop
+   *
+   * @return bool
+   */
+  protected function main()
+  {
+    $this->trigger(TRIGGER_INIT_STREAM);
+
+    $xmlParser = new XMLParser();
+    do {
+      echo '.';
+      if ($this->receive()) {
+        $buf = $xmlParser->parse($this->getReceived());
+
+        if ($buf !== false) {
+          $response = $xmlParser->getResponse($buf);
+          $this->handleEvents($response);
+        }
+        $this->clearReceived();
+      } else continue;
+      $this->sleep();
+    } while(!$this->getSocket()->hasTimedOut() && $this->getSocket()->isConnected());
+
+    return true;
   }
 
   /**
@@ -157,13 +209,28 @@ class Connection
    */
   protected function receive()
   {
+    echo 'receive';
     $buf = $this->getSocket()->read();
-    if ($buf !== false) {
+    var_dump($buf);
+    if ($buf) {
       if ($buf == '</stream:stream>') {
         $this->getSocket()->close();
       } else {
-        $this->_received_buffer = $buf;
-        return true;
+        // woah! an unclosed XML tag, receive more!
+        if (preg_match('/<\/?.+[^>]$/', $buf)) {
+          $this->_received_buffer = $buf;
+          $this->_invalid_xml = true;
+          echo PHP_EOL.'D\'OH: '.$buf.PHP_EOL;
+          return false;
+        } else {
+          if ($this->_invalid_xml) {
+            $this->_received_buffer .= $buf;
+            $this->_invalid_xml = false;
+          } else {
+            $this->_received_buffer = $buf;
+          }
+          return true;
+        }
       }
     }
     return false;
@@ -206,32 +273,6 @@ class Connection
   protected function sleep($min = 100, $max = 500)
   {
     usleep(mt_rand($min, $max) * 1000);
-  }
-
-  /**
-   * The core loop
-   *
-   * @return bool
-   */
-  protected function main()
-  {
-    $this->trigger(TRIGGER_INIT_STREAM);
-
-    $xmlParser = new XMLParser();
-    do {
-      if ($this->receive()) {
-        $buf = $xmlParser->parse($this->getReceived());
-
-        if ($buf !== false) {
-          $response = $xmlParser->getResponse($buf);
-          $this->handleEvents($response);
-        }
-        $this->clearReceived();
-      }
-      $this->sleep();
-    } while(!$this->getSocket()->hasTimedOut() && $this->getSocket()->isConnected());
-
-    return true;
   }
 
   /**
@@ -281,10 +322,12 @@ class Connection
     $streamHandler   = new StreamHandler();
     $iqHandler       = new InfoQueryHandler();
     $presenceHandler = new PresenceHandler();
+    $rosterHandler   = new RosterHandler();
 
     $this->addEventHandlers(array('stream:stream', 'stream:features', 'stream:error', 'starttls', 'proceed', 'success', 'failure', 'bind'), $streamHandler);
     $this->addEventHandlers(array('iq', 'ping'), $iqHandler);
     $this->addEventHandlers(array('presence'), $presenceHandler);
+    $this->addHandler($rosterHandler);
   }
 
   /**
@@ -332,8 +375,18 @@ class Connection
     $this->addHandler($eventHandler);
 
     foreach($events as $event) {
-      $this->_event_handlers[$event][] = $eventHandler;
+      //$this->_event_handlers[$event][] = $eventHandler;
+      $this->addEventToHandler($event, $eventHandler, false);
     }
+  }
+
+  public function addEventToHandler($event, EventReceiver $eventHandler, $addHandler = true)
+  {
+    if ($addHandler) {
+      $this->addHandler($eventHandler);
+    }
+
+    $this->_event_handlers[$event][] = $eventHandler;
   }
 
   /**
@@ -347,7 +400,7 @@ class Connection
   /**
    * @param \XMPP\EventHandlers\EventReceiver $handler
    */
-  protected function addHandler(EventReceiver $handler)
+  public function addHandler(EventReceiver $handler)
   {
     if (!in_array($handler, $this->_handlers)) {
       $this->_handlers[] = $handler;
@@ -506,5 +559,53 @@ class Connection
   public function getAuthStatus()
   {
     return $this->auth_status;
+  }
+
+  /**
+   * @param string $availability
+   */
+  public function setAvailability($availability)
+  {
+    $this->availability = $availability;
+  }
+
+  /**
+   * @return string
+   */
+  public function getAvailability()
+  {
+    return $this->availability;
+  }
+
+  /**
+   * @param string $priority
+   */
+  public function setPriority($priority)
+  {
+    $this->priority = $priority;
+  }
+
+  /**
+   * @return string
+   */
+  public function getPriority()
+  {
+    return $this->priority;
+  }
+
+  /**
+   * @param string $status
+   */
+  public function setStatus($status)
+  {
+    $this->status = $status;
+  }
+
+  /**
+   * @return string
+   */
+  public function getStatus()
+  {
+    return $this->status;
   }
 }

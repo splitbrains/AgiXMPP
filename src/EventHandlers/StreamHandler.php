@@ -23,6 +23,17 @@ class StreamHandler extends EventReceiver
   const XMPP_NAMESPACE_SESSION = 'urn:ietf:params:xml:ns:xmpp-session';
 
   /**
+   * @param string $trigger
+   */
+  public function onTrigger($trigger)
+  {
+    if ($trigger == TRIGGER_INIT_STREAM) {
+      $conf = array($this->getConnection()->getHost(), $this->getConnection()->getUser(), self::XMPP_PROTOCOL_VERSION, self::XMPP_STREAM_NAMESPACE, self::XMPP_STREAM_NAMESPACE_STREAM);
+      $this->getConnection()->send('<stream:stream to="%s" from="%s" version="%s" xmlns="%s" xmlns:stream="%s">', $conf);
+    }
+  }
+
+  /**
    * @param string $eventName
    */
   public function onEvent($eventName)
@@ -138,20 +149,10 @@ class StreamHandler extends EventReceiver
       case 'session_started':
         if ($response->getAttribute('type') == 'result') {
           Logger::log('Session started');
-          $this->trigger(TRIGGER_SESSION_STARTED);
+          $this->trigger(TRIGGER_ROSTER_GET);
+        //$this->trigger(TRIGGER_SESSION_STARTED);
         }
         break;
-    }
-  }
-
-  /**
-   * @param string $trigger
-   */
-  public function onTrigger($trigger)
-  {
-    if ($trigger == TRIGGER_INIT_STREAM) {
-      $conf = array($this->getConnection()->getHost(), $this->getConnection()->getUser(), self::XMPP_PROTOCOL_VERSION, self::XMPP_STREAM_NAMESPACE, self::XMPP_STREAM_NAMESPACE_STREAM);
-      $this->getConnection()->send('<stream:stream to="%s" from="%s" version="%s" xmlns="%s" xmlns:stream="%s">', $conf);
     }
   }
 }
