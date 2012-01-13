@@ -63,9 +63,19 @@ class Connection
   protected $socket;
 
   /**
+   * @var \XMPP\XML\Parser
+   */
+  protected $xmlParser;
+
+  /**
    * @var \XMPP\Logger
    */
   protected $Logger;
+
+  /**
+   * @var
+   */
+  protected $_parsed;
 
   /**
    * @var array The list of all registered handlers
@@ -124,6 +134,8 @@ class Connection
     $this->setAvailability($config['availability']);
     $this->setStatus($config['status']);
     $this->setPriority($config['priority']);
+
+    $this->xmlParser = new \XMPP\XML\Parser();
 
     $this->setSocket(new Socket());
     $this->registerDefaultHandlers();
@@ -186,18 +198,15 @@ class Connection
   {
     $this->trigger(TRIGGER_INIT_STREAM);
 
-    $xmlParser = new XMLParser();
     do {
-      echo '.';
       if ($this->receive()) {
-        $buf = $xmlParser->parse($this->getReceived());
 
-        if ($buf !== false) {
-          $response = $xmlParser->getResponse($buf);
-          $this->handleEvents($response);
-        }
+        print_r($this->getParsed());
+        exit;
+
+        $this->handleEvents();
         $this->clearReceived();
-      } else continue;
+      }
       $this->sleep();
     } while(!$this->getSocket()->hasTimedOut() && $this->getSocket()->isConnected());
 
@@ -209,24 +218,58 @@ class Connection
    */
   protected function receive()
   {
-    echo 'receive';
-    $buf = $this->getSocket()->read();
-    var_dump($buf);
+    $readBytes = 8192;
+
+    $buf = $this->getSocket()->read($readBytes);
+
+    if ($buf) {
+      //if ($buf == '</stream:stream>') {        $this->getSocket()->close();      } else {}
+
+      if (!$this->xmlParser->parse($buf) || $this->xmlParser->isEmpty()) {
+        $this->_received_buffer .= $buf;
+        $this->_invalid_xml = true;
+        Logger::log('Invalid XML, appending...');
+        return false;
+      } else {
+        if ($this->_invalid_xml) {
+          $this->_received_buffer .= $buf;
+          Logger::log('String completely received ('.(strlen($this->_received_buffer)).' chars)');
+          $this->_invalid_xml = false;
+        } else {
+          Logger::log('String completely received (simple)');
+          $this->_received_buffer = $buf;
+          $this->_parsed = $this->xmlParser->getStructure();
+        }
+        return true;
+      }
+    }
+    return false;
+  }
+
+  /*
+  protected function receive()
+  {
+    $readBytes = 8192;
+
+    $buf = $this->getSocket()->read($readBytes);
+
     if ($buf) {
       if ($buf == '</stream:stream>') {
         $this->getSocket()->close();
       } else {
         // woah! an unclosed XML tag, receive more!
-        if (preg_match('/<\/?.+[^>]$/', $buf)) {
-          $this->_received_buffer = $buf;
+        if (substr(trim($buf), -1) != '>' || strlen($buf) == $readBytes || preg_match('/<\/?.+[^>]$/', $buf)) {
+          $this->_received_buffer .= $buf;
           $this->_invalid_xml = true;
-          echo PHP_EOL.'D\'OH: '.$buf.PHP_EOL;
+          Logger::log('Invalid XML, appending...');
           return false;
         } else {
           if ($this->_invalid_xml) {
             $this->_received_buffer .= $buf;
+            Logger::log('String completely received ('.(strlen($this->_received_buffer)).' chars)');
             $this->_invalid_xml = false;
           } else {
+            Logger::log('String completely received (simple)');
             $this->_received_buffer = $buf;
           }
           return true;
@@ -235,6 +278,7 @@ class Connection
     }
     return false;
   }
+   */
 
   /**
    * @param string $data
@@ -251,9 +295,9 @@ class Connection
   /**
    * @return string
    */
-  protected function getReceived()
+  protected function getParsed()
   {
-    return $this->_received_buffer;
+    return $this->_parsed;
   }
 
   /**
