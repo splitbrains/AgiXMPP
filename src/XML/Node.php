@@ -13,6 +13,6 @@ class Node
   public $attributes = array();
   public $cdata = '';
   public $depth = 0;
-  public $children = array();
   public $tag_closed = 0;
+  public $children = array();
 }

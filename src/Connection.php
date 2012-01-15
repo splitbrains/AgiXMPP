@@ -3,7 +3,6 @@ namespace XMPP;
 
 use XMPP\Socket;
 use XMPP\Client;
-use XMPP\XMLParser;
 use XMPP\ResponseObject;
 use XMPP\Logger;
 
@@ -201,10 +200,10 @@ class Connection
     do {
       if ($this->receive()) {
 
-        print_r($this->getParsed());
-        exit;
+        print_r($this->xmlParser->getTree());
+        //exit;
 
-        $this->handleEvents();
+        //$this->handleEvents();
         $this->clearReceived();
       }
       $this->sleep();
@@ -223,62 +222,14 @@ class Connection
     $buf = $this->getSocket()->read($readBytes);
 
     if ($buf) {
-      //if ($buf == '</stream:stream>') {        $this->getSocket()->close();      } else {}
-
-      if (!$this->xmlParser->parse($buf) || $this->xmlParser->isEmpty()) {
-        $this->_received_buffer .= $buf;
-        $this->_invalid_xml = true;
-        Logger::log('Invalid XML, appending...');
-        return false;
-      } else {
-        if ($this->_invalid_xml) {
-          $this->_received_buffer .= $buf;
-          Logger::log('String completely received ('.(strlen($this->_received_buffer)).' chars)');
-          $this->_invalid_xml = false;
-        } else {
-          Logger::log('String completely received (simple)');
-          $this->_received_buffer = $buf;
-          $this->_parsed = $this->xmlParser->getStructure();
-        }
-        return true;
-      }
-    }
-    return false;
-  }
-
-  /*
-  protected function receive()
-  {
-    $readBytes = 8192;
-
-    $buf = $this->getSocket()->read($readBytes);
-
-    if ($buf) {
       if ($buf == '</stream:stream>') {
         $this->getSocket()->close();
       } else {
-        // woah! an unclosed XML tag, receive more!
-        if (substr(trim($buf), -1) != '>' || strlen($buf) == $readBytes || preg_match('/<\/?.+[^>]$/', $buf)) {
-          $this->_received_buffer .= $buf;
-          $this->_invalid_xml = true;
-          Logger::log('Invalid XML, appending...');
-          return false;
-        } else {
-          if ($this->_invalid_xml) {
-            $this->_received_buffer .= $buf;
-            Logger::log('String completely received ('.(strlen($this->_received_buffer)).' chars)');
-            $this->_invalid_xml = false;
-          } else {
-            Logger::log('String completely received (simple)');
-            $this->_received_buffer = $buf;
-          }
-          return true;
-        }
+        return $this->xmlParser->isValid($buf);
       }
     }
     return false;
   }
-   */
 
   /**
    * @param string $data

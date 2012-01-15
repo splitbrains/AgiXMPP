@@ -12,10 +12,10 @@ use XMPP\XML\Node;
 class Parser
 {
   protected $depth = 0;
-  protected $queue = array();
+  protected $tree = array();
   protected $root  = '';
-
   protected $parser;
+  protected $showRoot = true;
 
   public function __construct()
   {
@@ -32,19 +32,28 @@ class Parser
     $this->parser = $parser;
   }
 
-  public function parse($string)
+  public function isValid($string)
+  {
+    if (!$this->parse($string)) {
+      return false;
+    }
+    // at least the second level has to be closed; that ensures that all information is gathered
+    $tagClosed = isset($this->tree[2]) ? $this->tree[2]->tag_closed : true;
+    return count($this->tree) > 0 && $tagClosed;
+  }
+
+  /**
+   * @param $string
+   * @return int
+   */
+  protected function parse($string)
   {
     return xml_parse($this->parser, $string);
   }
 
-  public function isEmpty()
+  public function getTree()
   {
-    return count($this->getStructure()) == 0;
-  }
-
-  public function getStructure()
-  {
-    return $this->queue;
+    return $this->tree;
   }
 
   /**
@@ -52,7 +61,7 @@ class Parser
    */
   protected function setNode(Node $node)
   {
-    $this->queue[$this->depth] = $node;
+    $this->tree[$this->depth] = $node;
   }
 
   /**
@@ -62,28 +71,28 @@ class Parser
    */
   protected function getNode($offset = 0)
   {
-    return $this->queue[$this->depth + $offset];
+    return $this->tree[$this->depth + $offset];
   }
 
-  protected function unsetNode()
+  protected function unsetNode($depth)
   {
-    unset($this->queue[$this->depth]);
+    unset($this->tree[$depth]);
   }
 
   protected function tag_open($parser, $tag, $attrs)
   {
     $this->depth++;
 
-    if ($tag == $this->root) {
-      $this->queue = array();
-      $this->depth = 1;
-    }
-
     $node = new Node();
     $node->tag = $tag;
     $node->attributes = $attrs;
     $node->depth = $this->depth;
     $this->setNode($node);
+
+    if ($tag == $this->root) {
+      $this->tree = array();
+      $this->depth = 1;
+    }
 
     if ($this->depth == 1) {
       $this->root = $tag;
@@ -98,9 +107,12 @@ class Parser
     if ($this->depth > 2) {
       $parent = $this->getNode(-1);
       $parent->children[] = $node;
-      $this->unsetNode();
-    }
 
+      // don't return root depth
+      $this->unsetNode(1);
+      // no double flat nodes! (because they are pushed to their parents)
+      $this->unsetNode($this->depth);
+    }
     $this->depth--;
   }
 
