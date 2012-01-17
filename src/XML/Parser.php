@@ -7,6 +7,7 @@
  */
 namespace XMPP\XML;
 
+use XMPP\XML\NodeList;
 use XMPP\XML\Node;
 
 class Parser
@@ -15,7 +16,11 @@ class Parser
   protected $tree = array();
   protected $root  = '';
   protected $parser;
-  protected $showRoot = true;
+
+  /**
+   * @var \XMPP\XML\Node;
+   */
+  protected $rootNode = null;
 
   public function __construct()
   {
@@ -43,7 +48,7 @@ class Parser
   }
 
   /**
-   * @param $string
+   * @param string $string
    * @return int
    */
   protected function parse($string)
@@ -53,7 +58,15 @@ class Parser
 
   public function getTree()
   {
-    return $this->tree;
+    if ($this->hasRootNode()) {
+      $rootNode = array(1 => $this->rootNode);
+      $this->rootNode = null;
+    } else {
+      $rootNode = array(1 => new Node());
+    }
+    $nodeListArray = $rootNode + $this->tree;
+
+    return $nodeListArray;
   }
 
   /**
@@ -71,12 +84,22 @@ class Parser
    */
   protected function getNode($offset = 0)
   {
-    return $this->tree[$this->depth + $offset];
+    if (isset($this->tree[$this->depth + $offset])) {
+      return $this->tree[$this->depth + $offset];
+    }
   }
 
   protected function unsetNode($depth)
   {
     unset($this->tree[$depth]);
+  }
+
+  /**
+   * @return boolean
+   */
+  public function hasRootNode()
+  {
+    return !is_null($this->rootNode);
   }
 
   protected function tag_open($parser, $tag, $attrs)
@@ -96,9 +119,14 @@ class Parser
 
     if ($this->depth == 1) {
       $this->root = $tag;
+      $this->rootNode = $node;
     }
   }
 
+  /**
+   * @param $parser
+   * @param string $tag
+   */
   protected function tag_close($parser, $tag)
   {
     $node = $this->getNode();
@@ -108,7 +136,7 @@ class Parser
       $parent = $this->getNode(-1);
       $parent->children[] = $node;
 
-      // don't return root depth
+      // don't return root depth, it will be added manually later if given
       $this->unsetNode(1);
       // no double flat nodes! (because they are pushed to their parents)
       $this->unsetNode($this->depth);
@@ -116,6 +144,10 @@ class Parser
     $this->depth--;
   }
 
+  /**
+   * @param \resource $parser
+   * @param string $cdata
+   */
   protected function cdata($parser, $cdata)
   {
     $this->getNode()->cdata .= $cdata;
