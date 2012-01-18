@@ -25,7 +25,7 @@ class RosterHandler extends EventReceiver
       case 'roster_response':
         // @todo handle this stuff
 
-        print_r($this->getResponse()->getTag('query'));
+        print_r($this->getResponse()->get('query'));
 
         $this->trigger(TRIGGER_PRESENCE_INIT);
         break;

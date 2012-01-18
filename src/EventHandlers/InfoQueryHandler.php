@@ -21,16 +21,16 @@ class InfoQueryHandler extends EventReceiver
   {
     $response = $this->getResponse();
 
-    if ($eventName == 'iq' && $response->hasTag('ping') && $response->getAttributeFromTag('xmlns', 'ping') == self::XMPP_NAMESPACE_PING) {
-      $id = $response->getAttribute('id');
-      $from = $response->getAttribute('from');
+    if ($eventName == 'iq' && $response->get('ping') && $response->get('ping')->attr('xmlns') == self::XMPP_NAMESPACE_PING) {
+      $id = $response->get('iq')->attr('id');
+      $from = $response->get('iq')->attr('from');
 
       $this->getConnection()->send('<iq type="result" id="%s" to="%s" />', array($id, $from));
     }
 
     if ($eventName == 'disco_items') {
       //$response->setFilter('item');
-      print_r($response->getTag('item'));
+      print_r($response->get('item')->attrs());
     }
   }
 

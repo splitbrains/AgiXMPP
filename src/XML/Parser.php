@@ -12,16 +12,34 @@ use XMPP\XML\Node;
 
 class Parser
 {
+  /**
+   * @var int
+   */
   protected $depth = 0;
-  protected $tree = array();
-  protected $root  = '';
-  protected $parser;
 
+  /**
+   * @var array
+   */
+  protected $tree = array();
+
+  /**
+   * @var string
+   */
+  protected $root  = '';
+
+  /**
+   * @var \resource
+   */
+  protected $parser;
   /**
    * @var \XMPP\XML\Node;
    */
   protected $rootNode = null;
 
+  /**
+   *
+   *
+   */
   public function __construct()
   {
     $parser = xml_parser_create();
@@ -37,8 +55,13 @@ class Parser
     $this->parser = $parser;
   }
 
+  /**
+   * @param $string
+   * @return bool
+   */
   public function isValid($string)
   {
+    $string = preg_replace("/^<\?xml.+[^\?>]\?>/i", '', $string);
     if (!$this->parse($string)) {
       return false;
     }
@@ -56,6 +79,9 @@ class Parser
     return xml_parse($this->parser, $string);
   }
 
+  /**
+   * @return array
+   */
   public function getTree()
   {
     if ($this->hasRootNode()) {
@@ -64,9 +90,8 @@ class Parser
     } else {
       $rootNode = array(1 => new Node());
     }
-    $nodeListArray = $rootNode + $this->tree;
 
-    return $nodeListArray;
+    return $rootNode + $this->tree;
   }
 
   /**
@@ -89,6 +114,9 @@ class Parser
     }
   }
 
+  /**
+   * @param $depth
+   */
   protected function unsetNode($depth)
   {
     unset($this->tree[$depth]);
@@ -102,6 +130,11 @@ class Parser
     return !is_null($this->rootNode);
   }
 
+  /**
+   * @param \resource $parser
+   * @param string $tag
+   * @param array $attrs
+   */
   protected function tag_open($parser, $tag, $attrs)
   {
     $this->depth++;
@@ -124,7 +157,7 @@ class Parser
   }
 
   /**
-   * @param $parser
+   * @param \resource $parser
    * @param string $tag
    */
   protected function tag_close($parser, $tag)

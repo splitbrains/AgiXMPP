@@ -3,7 +3,7 @@ namespace XMPP;
 
 use XMPP\Socket;
 use XMPP\Client;
-use XMPP\ResponseObject;
+use XMPP\XML\ResponseObject;
 use XMPP\Logger;
 
 use XMPP\EventHandlers\EventReceiver;
@@ -199,11 +199,9 @@ class Connection
 
     do {
       if ($this->receive()) {
+        $response = new ResponseObject($this->xmlParser->getTree());
 
-        print_r($this->xmlParser->getTree());
-        //exit;
-
-        //$this->handleEvents();
+        $this->handleEvents($response);
         $this->clearReceived();
       }
       $this->sleep();
@@ -265,18 +263,18 @@ class Connection
    * @param int $min
    * @param int $max
    */
-  protected function sleep($min = 100, $max = 500)
+  protected function sleep($min = 100, $max = 300)
   {
     usleep(mt_rand($min, $max) * 1000);
   }
 
   /**
-   * @param \XMPP\ResponseObject $response
+   * @param \XMPP\XML\ResponseObject $response
    */
   protected function handleEvents(ResponseObject $response)
   {
     foreach($this->getCustomEvents() as $key => $data) {
-      if ($response->hasAttribute($data['attr'], $data['value'])) {
+      if ($response->getByAttr($data['attr'], $data['value'])) {
         /** @var $handler \XMPP\EventHandlers\EventReceiver */
         $handler = $data['handler'];
         $handler->setObjects($response, $this);
@@ -287,9 +285,8 @@ class Connection
     }
 
     foreach($this->getEventHandlers() as $event => $handlers) {
-      // filter out the specific event for the response object
-      if ($response->setFilter($event)) {
-        foreach($handlers as $handler) {
+      foreach($handlers as $handler) {
+        if (!empty($response->get($event)->tag)) {
           $handler->setObjects($response, $this);
           $handler->onEvent($event);
         }

@@ -7,8 +7,7 @@ require_once './src/Connection.php';
 require_once './src/Client.php';
 require_once './src/XML/Parser.php';
 require_once './src/XML/Node.php';
-require_once './src/XML/NodeList.php';
-require_once './src/ResponseObject.php';
+require_once './src/XML/ResponseObject.php';
 require_once './src/Logger.php';
 
 foreach(glob('./src/EventHandlers/*.php') as $fileName) {
