@@ -7,7 +7,6 @@
  */
 namespace XMPP\XML;
 
-use XMPP\XML\NodeList;
 use XMPP\XML\Node;
 
 class Parser
@@ -61,7 +60,8 @@ class Parser
    */
   public function isValid($string)
   {
-    $string = preg_replace("/^<\?xml.+[^\?>]\?>/i", '', $string);
+    // the XML parser, stops parsing when
+    $string = preg_replace("/^<\?xml.*?[^\?>]\?>/i", '', $string);
     if (!$this->parse($string)) {
       return false;
     }
