@@ -8,8 +8,7 @@
 namespace XMPP\EventHandlers;
 
 use XMPP\EventHandlers\EventReceiver;
-use XMPP\Logger;
- 
+
 class PresenceHandler extends EventReceiver
 {
   const SHOW_STATUS_AWAY = 'away';
@@ -20,20 +19,43 @@ class PresenceHandler extends EventReceiver
   /**
    * @param string $event
    */
-  public function onEvent($event)
+  public function onTrigger($event)
   {
+    $conn = $this->getConnection();
+    $allAvailabilities = array(self::SHOW_STATUS_AWAY, self::SHOW_STATUS_CHAT, self::SHOW_STATUS_DND, self::SHOW_STATUS_XA);
+
+    switch($event) {
+      case TRIGGER_PRESENCE_INIT:
+        // show initial presence
+
+        $availability = $conn->getAvailability();
+        $status = $conn->getStatus();
+        $priority = $conn->getPriority();
+
+        $stanzaShow = '';
+        $stanzaStatus = '';
+        $stanzaPriority = '';
+
+        if (!empty($availability) && in_array($availability, $allAvailabilities)) {
+          $stanzaShow = sprintf('<show>%s</show>', $availability);
+        }
+        if (!empty($status)) {
+          $stanzaStatus = sprintf('<status>%s</status>', $status);
+        }
+        if (is_numeric($priority) && $priority > -128 && $priority < 127) {
+          $stanzaPriority = sprintf('<priority>%d</priority>', (int)$priority);
+        }
+
+        $conn->send('<presence from="%s">%s%s%s</presence>', array($this->getConnection()->getJID(), $stanzaShow, $stanzaStatus, $stanzaPriority));
+        break;
+    }
   }
 
   /**
    * @param string $event
    */
-  public function onTrigger($event)
+  public function onEvent($event)
   {
-    switch($event) {
-      case TRIGGER_SESSION_STARTED:
-        // show presence
-        $this->getConnection()->send('<presence from="%s"><show>%s</show></presence>', array($this->getConnection()->getJID(), self::SHOW_STATUS_CHAT));
-        break;
-    }
   }
+
 }
