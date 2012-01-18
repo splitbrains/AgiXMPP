@@ -123,6 +123,19 @@ class Parser
     unset($this->tree[$depth]);
   }
 
+  /**
+   * @return boolean
+   */
+  public function hasRootNode()
+  {
+    return !is_null($this->rootNode);
+  }
+
+  /**
+   * @param \resource $parser
+   * @param string $tag
+   * @param array $attrs
+   */
   protected function tag_open($parser, $tag, $attrs)
   {
     $this->depth++;
