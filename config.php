@@ -1,9 +1,13 @@
 <?php
+use XMPP\EventHandlers\PresenceHandler;
+
 return array(
   'host' => 'jabber.net',
   'port' => 5222,
   'user' => 'user',
   'pass' => 'pass',
   'resource' => 'laptop',
-  'server' => 'jabber.net',
+  'availability' => PresenceHandler::SHOW_STATUS_AWAY,
+  'priority' => 0,
+  'status' => '',
 );

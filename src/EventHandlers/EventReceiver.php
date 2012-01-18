@@ -1,25 +1,25 @@
 <?php
 namespace XMPP\EventHandlers;
 
-use XMPP\ResponseObject;
 use XMPP\Connection;
+use XMPP\XML\ResponseObject;
 
 abstract class EventReceiver
 {
   /**
-   * @var \XMPP\ResponseObject
+   * @var \XMPP\XML\ResponseObject
    */
-  protected $response;
+  private $response;
 
   /**
    * @var \XMPP\Connection
    */
-  protected $connection;
+  private $connection;
 
   /**
    * @var \XMPP\Socket
    */
-  protected $socket;
+  private $socket;
 
   /**
    * Events are fired on rules
@@ -36,7 +36,7 @@ abstract class EventReceiver
   abstract public function onTrigger($trigger);
 
   /**
-   * @param \XMPP\ResponseObject $response
+   * @param \XMPP\XML\ResponseObject $response
    * @param \XMPP\Connection $connection
    */
   public function setObjects(ResponseObject $response, Connection $connection)
@@ -55,7 +55,7 @@ abstract class EventReceiver
   }
 
   /**
-   * @param \XMPP\ResponseObject $response
+   * @param \XMPP\XML\ResponseObject $response
    */
   public function setResponse($response)
   {
@@ -79,7 +79,7 @@ abstract class EventReceiver
   }
 
   /**
-   * @return \XMPP\ResponseObject
+   * @return \XMPP\XML\ResponseObject
    */
   public function getResponse()
   {
@@ -100,5 +100,10 @@ abstract class EventReceiver
   public function trigger($event)
   {
     $this->getConnection()->trigger($event);
+  }
+
+  public function addEvent($event)
+  {
+
   }
 }

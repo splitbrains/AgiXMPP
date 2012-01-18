@@ -6,8 +6,8 @@ $config = require_once (!file_exists('config.mine.php') ? 'config.php' : 'config
 $xmpp = new XMPP\Client($config);
 
 // add your awesome event handlers somewhere here
-
 $xmpp->connect();
+
 
 
 /*

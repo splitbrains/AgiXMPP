@@ -23,6 +23,17 @@ class StreamHandler extends EventReceiver
   const XMPP_NAMESPACE_SESSION = 'urn:ietf:params:xml:ns:xmpp-session';
 
   /**
+   * @param string $trigger
+   */
+  public function onTrigger($trigger)
+  {
+    if ($trigger == TRIGGER_INIT_STREAM) {
+      $conf = array($this->getConnection()->getHost(), $this->getConnection()->getUser(), self::XMPP_PROTOCOL_VERSION, self::XMPP_STREAM_NAMESPACE, self::XMPP_STREAM_NAMESPACE_STREAM);
+      $this->getConnection()->send('<stream:stream to="%s" from="%s" version="%s" xmlns="%s" xmlns:stream="%s">', $conf);
+    }
+  }
+
+  /**
    * @param string $eventName
    */
   public function onEvent($eventName)
@@ -33,7 +44,7 @@ class StreamHandler extends EventReceiver
 
     switch($eventName) {
       case 'stream:stream':
-        $this->sessionId = $response->getAttribute('id');
+        $this->sessionId = $response->get('stream:stream')->attr('id');
         // initiating stream
         // next: starttls
         break;
@@ -41,8 +52,8 @@ class StreamHandler extends EventReceiver
       case 'stream:features':
         if ($this->waitForSASL) {
           // as we are waiting for the SASL auth, there MUST NOT be any starttls tag in stream:features
-          if (!$response->hasTag('starttls')) {
-            if ($response->getAttributeFromTag('xmlns', 'mechanisms') == self::XMPP_NAMESPACE_SASL) {
+          if (!$response->get('stream:features')->hasSub('starttls')) {
+           if ($response->get('mechanisms')->attr('xmlns') == self::XMPP_NAMESPACE_SASL) {
               $this->waitForSASL = false;
 
               $user = $connection->getUser();
@@ -61,7 +72,7 @@ class StreamHandler extends EventReceiver
             }
           }
         } else {
-          $session = $response->getAttributeFromTag('xmlns', 'session');
+          $session = $response->get('session')->attr('xmlns');
 
           if ($session == self::XMPP_NAMESPACE_SESSION) {
             $this->hasSessionFeature = true;
@@ -70,7 +81,7 @@ class StreamHandler extends EventReceiver
         break;
 
       case 'starttls':
-        $xmlns = $response->getAttribute('xmlns');
+        $xmlns = $response->get('starttls')->attr('xmlns');
 
         if ($xmlns == self::XMPP_NAMESPACE_TLS) {
           $connection->send('<starttls xmlns="%s"/>', array(self::XMPP_NAMESPACE_TLS));
@@ -79,14 +90,13 @@ class StreamHandler extends EventReceiver
         break;
 
       case 'proceed':
-        if ($response->getAttribute('xmlns') == self::XMPP_NAMESPACE_TLS) {
+        if ($response->get('proceed')->attr('xmlns') == self::XMPP_NAMESPACE_TLS) {
           $socket->setCrypt(true);
           // we MUST send a new stream without creating a new TCP connection
           $this->trigger(TRIGGER_INIT_STREAM);
           $this->waitForSASL = true;
           // now we wait for the new stream response
           // next: stream:features -> MUST NOT contain starttls tag!
-
         }
         break;
 
@@ -106,25 +116,27 @@ class StreamHandler extends EventReceiver
         break;
 
       case 'bind':
-        if (!$response->hasTag('jid') && $response->getAttribute('xmlns') == self::XMPP_NAMESPACE_BIND) {
-            $id = $connection->UID();
+        if (!$response->get('bind')->hasSub('jid') && $response->get('bind')->attr('xmlns') == self::XMPP_NAMESPACE_BIND) {
+          $id = $connection->UID();
 
-            $resource = $connection->getResource();
-            if (!empty($resource)) {
-              $binding = sprintf('<bind xmlns="%s"><resource>%s</resource></bind>', self::XMPP_NAMESPACE_BIND, $resource);
-            } else {
-              $binding = sprintf('<bind xmlns="%s"/>', self::XMPP_NAMESPACE_BIND);
-            }
+          $resource = $connection->getResource();
+          if (!empty($resource)) {
+            $binding = sprintf('<bind xmlns="%s"><resource>%s</resource></bind>', self::XMPP_NAMESPACE_BIND, $resource);
+          } else {
+            $binding = sprintf('<bind xmlns="%s"/>', self::XMPP_NAMESPACE_BIND);
+          }
 
-            $connection->send('<iq id="%s" type="set">%s</iq>', array($id, $binding));
-            $connection->addIdHandler($id, 'custom_bind_event', $this);
+          $connection->send('<iq id="%s" type="set">%s</iq>', array($id, $binding));
+          $connection->addIdHandler($id, 'custom_bind_event', $this);
         }
         break;
 
       case 'custom_bind_event':
-        if ($response->getAttribute('type') == 'result') {
+        if ($response->get('iq')->attr('type') == 'result') {
           Logger::log('Successfully authed and connected');
-          $jid = $response->getTag('jid');
+
+          $jid = $response->get('jid')->cdata;
+
           $connection->setJID($jid);
           $connection->setAuthStatus(true);
 
@@ -136,22 +148,11 @@ class StreamHandler extends EventReceiver
         }
         break;
       case 'session_started':
-        if ($response->getAttribute('type') == 'result') {
+        if ($response->get('iq')->attr('type') == 'result') {
           Logger::log('Session started');
-          $this->trigger(TRIGGER_SESSION_STARTED);
+          $this->trigger(TRIGGER_ROSTER_GET);
         }
         break;
-    }
-  }
-
-  /**
-   * @param string $trigger
-   */
-  public function onTrigger($trigger)
-  {
-    if ($trigger == TRIGGER_INIT_STREAM) {
-      $conf = array($this->getConnection()->getHost(), $this->getConnection()->getUser(), self::XMPP_PROTOCOL_VERSION, self::XMPP_STREAM_NAMESPACE, self::XMPP_STREAM_NAMESPACE_STREAM);
-      $this->getConnection()->send('<stream:stream to="%s" from="%s" version="%s" xmlns="%s" xmlns:stream="%s">', $conf);
     }
   }
 }
