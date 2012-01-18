@@ -3,8 +3,9 @@ namespace XMPP;
 
 use XMPP\Socket;
 use XMPP\Client;
-use XMPP\XML\ResponseObject;
 use XMPP\Logger;
+use XMPP\XML\ResponseObject;
+use XMPP\XML\Parser;
 
 use XMPP\EventHandlers\EventReceiver;
 
@@ -124,7 +125,7 @@ class Connection
     $this->setStatus($config['status']);
     $this->setPriority($config['priority']);
 
-    $this->xmlParser = new \XMPP\XML\Parser();
+    $this->xmlParser = new Parser();
 
     $this->setSocket(new Socket());
     $this->registerDefaultHandlers();
