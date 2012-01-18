@@ -72,11 +72,6 @@ class Connection
   protected $Logger;
 
   /**
-   * @var
-   */
-  protected $_parsed;
-
-  /**
    * @var array The list of all registered handlers
    */
   protected $_handlers = array();
@@ -95,11 +90,6 @@ class Connection
    * @var array
    */
   protected $_custom_handlers = array();
-
-  /**
-   * @var string The queue buffer
-   */
-  protected $_received_buffer = '';
 
   /**
    * @var int
@@ -172,7 +162,7 @@ class Connection
   public function disconnect($closeStream = false)
   {
     if ($closeStream) {
-      $this->getSocket()->write('</stream:stream>');
+      $this->getSocket()->write(StreamHandler::XMPP_TERMINATE_STREAM);
     }
     $this->getSocket()->close();
     Logger::log('Disconnected');
@@ -200,9 +190,7 @@ class Connection
     do {
       if ($this->receive()) {
         $response = new ResponseObject($this->xmlParser->getTree());
-
         $this->handleEvents($response);
-        $this->clearReceived();
       }
       $this->sleep();
     } while(!$this->getSocket()->hasTimedOut() && $this->getSocket()->isConnected());
@@ -215,12 +203,9 @@ class Connection
    */
   protected function receive()
   {
-    $readBytes = 8192;
-
-    $buf = $this->getSocket()->read($readBytes);
-
+    $buf = $this->getSocket()->read();
     if ($buf) {
-      if ($buf == '</stream:stream>') {
+      if ($buf == StreamHandler::XMPP_TERMINATE_STREAM) {
         $this->getSocket()->close();
       } else {
         return $this->xmlParser->isValid($buf);
@@ -239,22 +224,6 @@ class Connection
       $data = vsprintf($data, $args);
     }
     $this->getSocket()->write($data);
-  }
-
-  /**
-   * @return string
-   */
-  protected function getParsed()
-  {
-    return $this->_parsed;
-  }
-
-  /**
-   *
-   */
-  protected function clearReceived()
-  {
-    $this->_received_buffer = '';
   }
 
   /**
@@ -329,7 +298,7 @@ class Connection
    * @param string $attr
    * @param string $value
    * @param string $customEventName
-   * @param EventHandlers\EventReceiver $eventHandler
+   * @param \XMPP\EventHandlers\EventReceiver $eventHandler
    */
   public function addCustomHandler($attr, $value, $customEventName, EventReceiver $eventHandler)
   {
@@ -350,7 +319,7 @@ class Connection
   }
 
   /**
-   * @param int $key
+   * @param $key
    */
   protected function unsetCustomEvent($key)
   {
@@ -372,6 +341,11 @@ class Connection
     }
   }
 
+  /**
+   * @param $event
+   * @param \XMPP\EventHandlers\EventReceiver $eventHandler
+   * @param bool $addHandler
+   */
   public function addEventToHandler($event, EventReceiver $eventHandler, $addHandler = true)
   {
     if ($addHandler) {

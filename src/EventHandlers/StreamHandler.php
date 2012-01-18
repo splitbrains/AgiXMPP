@@ -22,6 +22,8 @@ class StreamHandler extends EventReceiver
   const XMPP_NAMESPACE_BIND = 'urn:ietf:params:xml:ns:xmpp-bind';
   const XMPP_NAMESPACE_SESSION = 'urn:ietf:params:xml:ns:xmpp-session';
 
+  const XMPP_TERMINATE_STREAM = '</stream:stream>';
+
   /**
    * @param string $trigger
    */
