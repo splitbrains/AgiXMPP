@@ -60,7 +60,8 @@ class Parser
    */
   public function isValid($string)
   {
-    // the XML parser, stops parsing when
+    // the XML parser, stops parsing when re-sent
+    // https://bugs.php.net/bug.php?id=60792
     $string = preg_replace("/^<\?xml.*?[^\?>]\?>/i", '', $string);
     if (!$this->parse($string)) {
       return false;
