@@ -6,7 +6,6 @@ use XMPP\Client;
 use XMPP\Logger;
 use XMPP\XML\ResponseObject;
 use XMPP\XML\Parser;
-
 use XMPP\EventHandlers\EventReceiver;
 
 // default handlers which are registered in registerDefaultHandlers()
