@@ -192,7 +192,7 @@ class Connection
   }
 
   /**
-   *
+   * @return bool
    */
   public function isConnected()
   {
