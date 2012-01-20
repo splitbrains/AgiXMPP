@@ -40,12 +40,20 @@ class Node
    * @param $tag
    * @return bool
    */
-  public function hasSub($tag)
+  public function has($tag)
   {
     $r = new ResponseObject($this->children);
     if (!empty($r->get($tag)->tag)) {
       return true;
     }
     return false;
+  }
+
+  /**
+   * @return string
+   */
+  public function cdata()
+  {
+    return $this->cdata;
   }
 }

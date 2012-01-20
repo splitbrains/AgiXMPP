@@ -125,13 +125,16 @@ class Connection
     $this->setPriority($config['priority']);
 
     $this->xmlParser = new Parser();
-
     $this->setSocket(new Socket());
+
+
     $this->registerDefaultHandlers();
   }
 
   /**
    * Connects to the host with the settings from the config (set in the constructor)
+   *
+   * @return bool
    */
   public function connect()
   {
@@ -139,10 +142,11 @@ class Connection
     Logger::log('Attempting to connect to '.$this->getHost().':'.$this->getPort().'.');
 
     if ($conn) {
-      $this->main();
-    } else {
-      Logger::err('Could not connect to host.', true);
+      $this->trigger(TRIGGER_INIT_STREAM);
+      return true;
     }
+    Logger::err('Could not connect to host.', true);
+    return false;
   }
 
   /**
@@ -178,24 +182,21 @@ class Connection
     return 'agixmpp_'.substr(md5(microtime().$this->_uid++), 0, 8);
   }
 
-  /**
-   * The core loop
-   *
-   * @return bool
-   */
-  protected function main()
+
+  public function handleServerMessages()
   {
-    $this->trigger(TRIGGER_INIT_STREAM);
+    if ($this->receive()) {
+      $response = new ResponseObject($this->xmlParser->getTree());
+      $this->handleEvents($response);
+    }
+  }
 
-    do {
-      if ($this->receive()) {
-        $response = new ResponseObject($this->xmlParser->getTree());
-        $this->handleEvents($response);
-      }
-      $this->sleep();
-    } while(!$this->getSocket()->hasTimedOut() && $this->getSocket()->isConnected());
-
-    return true;
+  /**
+   *
+   */
+  public function isConnected()
+  {
+    return !$this->getSocket()->hasTimedOut() && $this->getSocket()->isConnected();
   }
 
   /**
@@ -232,7 +233,7 @@ class Connection
    * @param int $min
    * @param int $max
    */
-  protected function sleep($min = 100, $max = 300)
+  public function sleep($min = 100, $max = 300)
   {
     usleep(mt_rand($min, $max) * 1000);
   }

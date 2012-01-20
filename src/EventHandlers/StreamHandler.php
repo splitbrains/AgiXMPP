@@ -54,7 +54,7 @@ class StreamHandler extends EventReceiver
       case 'stream:features':
         if ($this->waitForSASL) {
           // as we are waiting for the SASL auth, there MUST NOT be any starttls tag in stream:features
-          if (!$response->get('stream:features')->hasSub('starttls')) {
+          if (!$response->get('stream:features')->has('starttls')) {
            if ($response->get('mechanisms')->attr('xmlns') == self::XMPP_NAMESPACE_SASL) {
               $this->waitForSASL = false;
 
@@ -118,7 +118,7 @@ class StreamHandler extends EventReceiver
         break;
 
       case 'bind':
-        if (!$response->get('bind')->hasSub('jid') && $response->get('bind')->attr('xmlns') == self::XMPP_NAMESPACE_BIND) {
+        if (!$response->get('bind')->has('jid') && $response->get('bind')->attr('xmlns') == self::XMPP_NAMESPACE_BIND) {
           $id = $connection->UID();
 
           $resource = $connection->getResource();

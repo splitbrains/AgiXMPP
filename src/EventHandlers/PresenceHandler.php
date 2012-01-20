@@ -16,6 +16,13 @@ class PresenceHandler extends EventReceiver
   const SHOW_STATUS_DND  = 'dnd';
   const SHOW_STATUS_XA   = 'xa';
 
+  protected $presences = array();
+
+  public static function getPresences()
+  {
+
+  }
+
   /**
    * @param string $event
    */
@@ -56,6 +63,19 @@ class PresenceHandler extends EventReceiver
    */
   public function onEvent($event)
   {
+    $response = $this->getResponse();
+
+    if ($event == 'presence' && $response->get('presence')->attr('to') == $this->getConnection()->getJID()) {
+
+      $from = $response->get('presence')->attr('from');
+
+      $presence = array();
+      $presence['type'] = $response->get('presence')->attr('type');
+      $presence['show'] = $response->get('show')->cdata();
+      $presence['status'] = $response->get('status')->cdata();
+
+      $this->presences[$from] = $presence;
+    }
   }
 
 }

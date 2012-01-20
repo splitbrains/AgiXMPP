@@ -6,7 +6,25 @@ $config = require_once (!file_exists('config.mine.php') ? 'config.php' : 'config
 $xmpp = new XMPP\Client($config);
 
 // add your awesome event handlers somewhere here
-$xmpp->connect();
+if (!$xmpp->connect()) die();
+
+do {
+  $xmpp->handleServerMessages();
+
+
+  /*
+  if (!$xmpp->sendQueue->empty()) {
+    while($msg = $xmpp->sendQueue->getItem()) {
+      if ($xmpp->send($msg)) {
+        $xmpp->sendQueue->deleteItem($msg);
+      }
+    }
+  }
+  */
+  // if () ... break;
+
+  $xmpp->sleep();
+} while($xmpp->isConnected());
 
 
 
@@ -22,7 +40,7 @@ class ExampleHandler extends \XMPP\EventHandlers\EventReceiver
   /**
    * @param string $event
    *-/
-  public function onEvent($event, $context)
+  public function onEvent($event)
   {
     echo '~ Event: '.$event;
     echo ' -> ';
