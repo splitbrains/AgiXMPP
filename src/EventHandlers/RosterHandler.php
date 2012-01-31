@@ -10,10 +10,10 @@ namespace XMPP\EventHandlers;
 
 use XMPP\EventHandlers\EventReceiver;
 
-\XMPP\Logger::$enabled = true;
-
 class RosterHandler extends EventReceiver
 {
+  const ROSTER_FILE = 'data/contacts.json';
+
   const IQ_ROSTER_NAMESPACE = 'jabber:iq:roster';
 
   /**
@@ -25,7 +25,15 @@ class RosterHandler extends EventReceiver
       case 'roster_response':
         // @todo handle this stuff
 
-        print_r($this->getResponse()->get('query'));
+        $children = $this->getResponse()->getAll('item');
+
+        $json = array();
+        foreach($children as $child) {
+          $json[] = array('jid' => $child->attr('jid'), 'subscription' => $child->attr('subscription'));
+        }
+        $json = json_encode($json);
+
+        file_put_contents(self::ROSTER_FILE, $json);
 
         $this->trigger(TRIGGER_PRESENCE_INIT);
         break;

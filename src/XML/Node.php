@@ -50,10 +50,31 @@ class Node
   }
 
   /**
+   * @param string $tag
+   * @return Node
+   */
+  public function get($tag)
+  {
+    $r = new ResponseObject($this->children);
+    if (!empty($r->get($tag)->tag)) {
+      return $r->get($tag);
+    }
+    return false;
+  }
+
+  /**
    * @return string
    */
   public function cdata()
   {
     return $this->cdata;
+  }
+
+  /**
+   * @return array
+   */
+  public function children()
+  {
+    return $this->children;
   }
 }

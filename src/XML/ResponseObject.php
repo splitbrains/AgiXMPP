@@ -44,6 +44,24 @@ class ResponseObject
   }
 
   /**
+   * @param string $tag
+   * @return Node[]
+   */
+  public function getAll($tag)
+  {
+    $ret = array();
+
+    foreach($this->iterator as $key => $node) {
+      if ($node instanceof Node || is_numeric($key)) {
+        if ($node->tag === $tag) {
+          $ret[] = $node;
+        }
+      }
+    }
+    return $ret;
+  }
+
+  /**
    * @param $attr
    * @param $val
    *

@@ -72,6 +72,11 @@ class Connection
   protected $Logger;
 
   /**
+   * @var \XMPP\SendQueue
+   */
+  protected $sendQueue;
+
+  /**
    * @var array The list of all registered handlers
    */
   protected $_handlers = array();
@@ -186,6 +191,7 @@ class Connection
   public function handleServerMessages()
   {
     if ($this->receive()) {
+      print_r($this->xmlParser->getTree());
       $response = new ResponseObject($this->xmlParser->getTree());
       $this->handleEvents($response);
     }
@@ -574,5 +580,21 @@ class Connection
   public function getStatus()
   {
     return $this->status;
+  }
+
+  /**
+   * @param \XMPP\SendQueue $sendQueue
+   */
+  public function setSendQueue($sendQueue)
+  {
+    $this->sendQueue = $sendQueue;
+  }
+
+  /**
+   * @return \XMPP\SendQueue
+   */
+  public function getSendQueue()
+  {
+    return $this->sendQueue;
   }
 }

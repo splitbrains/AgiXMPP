@@ -7,16 +7,32 @@
  */
 namespace XMPP;
 
-interface SendQueue
+use Iterator;
+use ArrayAccess;
+
+abstract class SendQueue
 {
-  public function getMessages();
 }
 
  
-class DbMessages implements SendQueue
+class FileMessages extends SendQueue
 {
-  public function getMessages()
-  {
+  protected $file = '';
 
+  public function __construct($file)
+  {
+    $this->file = $file;
   }
+}
+
+$sendQ = new FileMessages('../data/sendqueue.txt');
+
+foreach($sendQ as $data) {
+  //echo $sendQ->getItem();
+  echo $data;
+
+
+  //$xmpp->send($msg);
+
+  $sendQ->deleteItem();
 }

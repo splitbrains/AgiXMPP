@@ -5,27 +5,32 @@ $config = require_once (!file_exists('config.mine.php') ? 'config.php' : 'config
 
 $xmpp = new XMPP\Client($config);
 
+//$xmpp->setSendQueue(new \XMPP\FileMessages());
+
 
 // add your awesome event handlers somewhere here
 if (!$xmpp->connect()) die();
 
-do {
+while($xmpp->isConnected()) {
   $xmpp->handleServerMessages();
 
 
-  /*
-  if (!$xmpp->sendQueue->empty()) {
-    while($msg = $xmpp->sendQueue->getItem()) {
+  foreach($xmpp->getSendQueue() as $item) {
+    $xmpp->send($item);
+  }
+
+    /*
+    while($msg = $xmpp->getSendQueue()->getItem()) {
       if ($xmpp->send($msg)) {
-        $xmpp->sendQueue->deleteItem($msg);
+        $xmpp->getSendQueue()->deleteItem($msg);
       }
     }
-  }
-  */
+    */
+
   // if () ... break;
 
   $xmpp->sleep();
-} while($xmpp->isConnected());
+}
 
 
 
