@@ -87,11 +87,14 @@ class Socket
 
   /**
    * @param $data
+   * @return bool
    */
   public function write($data)
   {
     Logger::log($data, 'SENT');
-    fwrite($this->socket, $data);
+    $write = fwrite($this->socket, $data);
+
+    return $write === strlen($data);
   }
 
   /**

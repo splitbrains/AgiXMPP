@@ -191,7 +191,6 @@ class Connection
   public function handleServerMessages()
   {
     if ($this->receive()) {
-      print_r($this->xmlParser->getTree());
       $response = new ResponseObject($this->xmlParser->getTree());
       $this->handleEvents($response);
     }
