@@ -1,4 +1,10 @@
 <?php
+/**
+ * @author Daniel Lehr <daniel@agixo.de>
+ * @internal-coding = utf-8
+ * @internal UTF-Chars: ÄÖÜäöüß∆
+ * created on 11.01.12 14:19.
+ */
 namespace XMPP\EventHandlers;
 
 use XMPP\Client;
@@ -48,10 +54,10 @@ abstract class EventReceiver
    */
   public function setObjects(ResponseObject $response, Connection $connection, Client $client)
   {
-    $this->response   = $response;
+    $this->response = $response;
     $this->connection = $connection;
-    $this->socket     = $connection->getSocket();
-    $this->client     = $client;
+    $this->socket = $connection->getSocket();
+    $this->client = $client;
   }
 
   /**

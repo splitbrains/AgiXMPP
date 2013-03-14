@@ -10,7 +10,7 @@ use XMPP\EventHandlers\EventReceiver;
 
 // default handlers which are registered in registerDefaultHandlers()
 use XMPP\EventHandlers\StreamHandler;
-use XMPP\EventHandlers\InfoQueryHandler;
+use XMPP\EventHandlers\PingHandler;
 use XMPP\EventHandlers\RosterHandler;
 use XMPP\EventHandlers\PresenceHandler;
 
@@ -226,10 +226,10 @@ class Connection
    */
   protected function registerDefaultHandlers()
   {
-    $streamHandler   = new StreamHandler();
-    $iqHandler       = new InfoQueryHandler();
+    $iqHandler = new PingHandler();
+    $streamHandler = new StreamHandler();
+    $rosterHandler = new RosterHandler();
     $presenceHandler = new PresenceHandler();
-    $rosterHandler   = new RosterHandler();
 
     $this->addEventHandlers(array('stream:stream', 'stream:features', 'stream:error', 'starttls', 'proceed', 'success', 'failure', 'bind'), $streamHandler);
     $this->addEventHandlers(array('iq', 'ping'), $iqHandler);

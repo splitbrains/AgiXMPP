@@ -64,6 +64,11 @@ class Client
     $this->connection = new Connection($this, $config['host'], $config['port']);
   }
 
+  public function getConnection()
+  {
+    return $this->connection;
+  }
+
   public function connect()
   {
     return $this->connection->connect();

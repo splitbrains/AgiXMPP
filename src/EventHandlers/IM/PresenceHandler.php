@@ -20,7 +20,16 @@ class PresenceHandler extends EventReceiver
 
   public static function getPresences()
   {
+  }
 
+  public static function getAvailabilities()
+  {
+    return array(
+      self::SHOW_STATUS_AWAY,
+      self::SHOW_STATUS_CHAT,
+      self::SHOW_STATUS_DND,
+      self::SHOW_STATUS_XA
+    );
   }
 
   /**
@@ -28,21 +37,19 @@ class PresenceHandler extends EventReceiver
    */
   public function onTrigger($event)
   {
-    $allAvailabilities = array(self::SHOW_STATUS_AWAY, self::SHOW_STATUS_CHAT, self::SHOW_STATUS_DND, self::SHOW_STATUS_XA);
-
     switch($event) {
       case TRIGGER_PRESENCE_INIT:
         // show initial presence
 
-        $availability = $this->client->availability;
         $status = $this->client->status;
         $priority = $this->client->priority;
+        $availability = $this->client->availability;
 
         $stanzaShow = '';
         $stanzaStatus = '';
         $stanzaPriority = '';
 
-        if (!empty($availability) && in_array($availability, $allAvailabilities)) {
+        if (!empty($availability) && in_array($availability, self::getAvailabilities())) {
           $stanzaShow = sprintf('<show>%s</show>', $availability);
         }
         if (!empty($status)) {
@@ -65,7 +72,6 @@ class PresenceHandler extends EventReceiver
     $response = $this->response;
 
     if ($event == 'presence' && $response->get('presence')->attr('to') == $this->client->JID) {
-
       $from = $response->get('presence')->attr('from');
 
       $presence = array();

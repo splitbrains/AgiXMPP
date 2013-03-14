@@ -1,7 +1,6 @@
 <?php
 namespace XMPP\EventHandlers;
 
-use XMPP\Connection;
 use XMPP\EventHandlers\EventReceiver;
 use XMPP\Logger;
 

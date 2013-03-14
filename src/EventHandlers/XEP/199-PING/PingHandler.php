@@ -9,9 +9,15 @@ namespace XMPP\EventHandlers;
 
 use XMPP\EventHandlers\EventReceiver;
 
-class InfoQueryHandler extends EventReceiver
+/**
+ * Handler for XEP-0199 (XMPP Ping)
+ * See http://xmpp.org/extensions/xep-0030.html
+ *
+ * Class PingHandler
+ * @package XMPP\EventHandlers
+ */
+class PingHandler extends EventReceiver
 {
-
   const XMPP_NAMESPACE_PING = 'urn:xmpp:ping';
 
   /**
@@ -22,7 +28,7 @@ class InfoQueryHandler extends EventReceiver
     $response = $this->response;
 
     if ($eventName == 'iq' && $response->get('ping') && $response->get('ping')->attr('xmlns') == self::XMPP_NAMESPACE_PING) {
-      $id   = $response->get('iq')->attr('id');
+      $id = $response->get('iq')->attr('id');
       $from = $response->get('iq')->attr('from');
 
       $this->connection->send('<iq type="result" id="%s" to="%s" />', array($id, $from));
