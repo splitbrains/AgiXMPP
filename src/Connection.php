@@ -1,8 +1,8 @@
 <?php
 namespace XMPP;
 
-use XMPP\Socket;
 use XMPP\Client;
+use XMPP\Socket;
 use XMPP\Logger;
 use XMPP\XML\ResponseObject;
 use XMPP\XML\Parser;
@@ -19,132 +19,75 @@ class Connection
   /**
    * @var string Remote XMPP server
    */
-  protected $host;
+  public $host;
 
   /**
    * @var int Remote XMPP server port
    */
-  protected $port;
+  public $port;
 
   /**
-   * @var string User for authentication
+   * @var \XMPP\Client
    */
-  protected $user;
+  public $client;
 
-  /**
-   * @var string Password for authentication
-   */
-  protected $pass;
-
-  /**
-   * @var string The resource, which will be shown in the full JID (e.g. laptop, mobile, ..)
-   */
-  protected $resource;
-
-  /**
-   * @var string
-   */
-  protected $availability;
-
-  /**
-   * @var string
-   */
-  protected $priority;
-
-  /**
-   * @var string
-   */
-  protected $status;
 
   /**
    * @var \XMPP\Socket The basic socket stream
    */
-  protected $socket;
+  private $socket;
 
   /**
    * @var \XMPP\XML\Parser
    */
-  protected $xmlParser;
-
-  /**
-   * @var \XMPP\Logger
-   */
-  protected $Logger;
-
-  /**
-   * @var \XMPP\SendQueue
-   */
-  protected $sendQueue;
+  private $xmlParser;
 
   /**
    * @var array The list of all registered handlers
    */
-  protected $_handlers = array();
+  private $_handlers = array();
 
   /**
    * @var array The list of events which should be triggered
    */
-  protected $_triggers = array();
+  private $_triggers = array();
 
   /**
    * @var array The handlers in context with their events to wait for
    */
-  protected $_event_handlers = array();
+  private $_event_handlers = array();
 
   /**
    * @var array
    */
-  protected $_custom_handlers = array();
+  private $_custom_handlers = array();
 
   /**
    * @var int
    */
-  protected $_uid = 0;
+  private $_uid = 0;
 
-  protected $_invalid_xml = false;
 
-  ///// Variables changed by the event handlers
-
-  /**
-   * @var string
-   */
-  protected $JID;
-
-  /**
-   * @var bool
-   */
-  protected $auth_status = false;
-
-  /**
-   * @param array $config
-   */
-  public function __construct(array $config)
+  public function __construct(Client $client, $host, $port)
   {
-    $this->setHost($config['host']);
-    $this->setPort($config['port']);
-    $this->setUser($config['user']);
-    $this->setPass($config['pass']);
-    $this->setResource($config['resource']);
-    $this->setAvailability($config['availability']);
-    $this->setStatus($config['status']);
-    $this->setPriority($config['priority']);
+    $this->host = $host;
+    $this->port = $port;
+    $this->client = $client;
 
+    $this->socket = new Socket();
     $this->xmlParser = new Parser();
-    $this->setSocket(new Socket());
-
 
     $this->registerDefaultHandlers();
   }
 
   /**
    * Connects to the host with the settings from the config (set in the constructor)
-   *
    * @return bool
    */
   public function connect()
   {
-    $conn = $this->getSocket()->open('tcp', $this->getHost(), $this->getPort());
-    Logger::log('Attempting to connect to '.$this->getHost().':'.$this->getPort().'.');
+    $conn = $this->getSocket()->open('tcp', $this->host, $this->port);
+    Logger::log('Attempting to connect to '.$this->host.':'.$this->port.'.');
 
     if ($conn) {
       $this->trigger(TRIGGER_INIT_STREAM);
@@ -187,20 +130,16 @@ class Connection
     return 'agixmpp_'.substr(md5(microtime().$this->_uid++), 0, 8);
   }
 
-
-  public function handleServerMessages()
-  {
-    if ($this->receive()) {
-      $response = new ResponseObject($this->xmlParser->getTree());
-      $this->handleEvents($response);
-    }
-  }
-
   /**
    * @return bool
    */
   public function isConnected()
   {
+    if ($this->receive()) {
+      $response = new ResponseObject($this->xmlParser->getTree());
+      $this->handleEvents($response);
+    }
+
     return !$this->getSocket()->hasTimedOut() && $this->getSocket()->isConnected();
   }
 
@@ -252,7 +191,7 @@ class Connection
       if ($response->getByAttr($data['attr'], $data['value'])) {
         /** @var $handler \XMPP\EventHandlers\EventReceiver */
         $handler = $data['handler'];
-        $handler->setObjects($response, $this);
+        $handler->setObjects($response, $this, $this->client);
         $handler->onEvent($data['customEventName']);
 
         $this->unsetCustomEvent($key);
@@ -262,7 +201,7 @@ class Connection
     foreach($this->getEventHandlers() as $event => $handlers) {
       foreach($handlers as $handler) {
         if (!empty($response->get($event)->tag)) {
-          $handler->setObjects($response, $this);
+          $handler->setObjects($response, $this, $this->client);
           $handler->onEvent($event);
         }
       }
@@ -276,7 +215,7 @@ class Connection
   {
     /** @var $handler \XMPP\EventHandlers\EventReceiver */
     foreach($this->getHandlers() as $handler) {
-      $handler->setObjects(new ResponseObject(array()), $this);
+      $handler->setObjects(new ResponseObject(array()), $this, $this->client);
       $handler->onTrigger($trigger);
     }
   }
@@ -412,188 +351,10 @@ class Connection
   }
 
   /**
-   * @param string $host
-   */
-  public function setHost($host)
-  {
-    $this->host = $host;
-  }
-
-  /**
-   * @param int $port
-   */
-  public function setPort($port)
-  {
-    if (is_numeric($port)) {
-      $this->port = $port;
-    }
-  }
-
-  /**
-   * @param string $user
-   */
-  public function setUser($user)
-  {
-    $this->user = $user;
-  }
-
-  /**
-   * @param string $pass
-   */
-  public function setPass($pass)
-  {
-    $this->pass = $pass;
-  }
-
-  /**
-   * @param string $resource
-   */
-  public function setResource($resource)
-  {
-    $this->resource = $resource;
-  }
-
-  /**
-   * @param string $JID
-   */
-  public function setJID($JID)
-  {
-    $this->JID = $JID;
-  }
-
-  /**
    * @return \XMPP\Socket
    */
   public function getSocket()
   {
     return $this->socket;
-  }
-
-  /**
-   * @return string
-   */
-  public function getHost()
-  {
-    return $this->host;
-  }
-
-  /**
-   * @return int
-   */
-  public function getPort()
-  {
-    return $this->port;
-  }
-
-  /**
-   * @return string
-   */
-  public function getUser()
-  {
-    return $this->user;
-  }
-
-  /**
-   * @return string
-   */
-  public function getPass()
-  {
-    return $this->pass;
-  }
-
-  /**
-   * @return string
-   */
-  public function getResource()
-  {
-    return $this->resource;
-  }
-
-  /**
-   * @return string
-   */
-  public function getJID()
-  {
-    return $this->JID;
-  }
-
-  /**
-   * @param bool $auth_status
-   */
-  public function setAuthStatus($auth_status)
-  {
-    $this->auth_status = $auth_status;
-  }
-
-  /**
-   * @return bool
-   */
-  public function getAuthStatus()
-  {
-    return $this->auth_status;
-  }
-
-  /**
-   * @param string $availability
-   */
-  public function setAvailability($availability)
-  {
-    $this->availability = $availability;
-  }
-
-  /**
-   * @return string
-   */
-  public function getAvailability()
-  {
-    return $this->availability;
-  }
-
-  /**
-   * @param string $priority
-   */
-  public function setPriority($priority)
-  {
-    $this->priority = $priority;
-  }
-
-  /**
-   * @return string
-   */
-  public function getPriority()
-  {
-    return $this->priority;
-  }
-
-  /**
-   * @param string $status
-   */
-  public function setStatus($status)
-  {
-    $this->status = $status;
-  }
-
-  /**
-   * @return string
-   */
-  public function getStatus()
-  {
-    return $this->status;
-  }
-
-  /**
-   * @param \XMPP\SendQueue $sendQueue
-   */
-  public function setSendQueue($sendQueue)
-  {
-    $this->sendQueue = $sendQueue;
-  }
-
-  /**
-   * @return \XMPP\SendQueue
-   */
-  public function getSendQueue()
-  {
-    return $this->sendQueue;
   }
 }

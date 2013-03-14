@@ -14,7 +14,7 @@ class DiscoveryHandler extends EventReceiver
   public function onEvent($eventName) {
     if ($eventName == 'disco_items') {
       //$response->setFilter('item');
-      print_r($this->getResponse()->get('item')->attrs());
+      print_r($this->response->get('item')->attrs());
     }
   }
 
@@ -25,9 +25,9 @@ class DiscoveryHandler extends EventReceiver
   {
     switch($trigger) {
       case TRIGGER_SESSION_STARTED:
-        $id = $this->getConnection()->UID();
-        $this->getConnection()->send('<iq type="get" id="%s"><query xmlns="http://jabber.org/protocol/disco#items"/></iq>', array($id));
-        $this->getConnection()->addIdHandler($id, 'disco_items', $this);
+        $id = $this->connection->UID();
+        $this->connection->send('<iq type="get" id="%s"><query xmlns="http://jabber.org/protocol/disco#items"/></iq>', array($id));
+        $this->connection->addIdHandler($id, 'disco_items', $this);
         break;
     }
   }

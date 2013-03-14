@@ -30,8 +30,8 @@ class StreamHandler extends EventReceiver
   public function onTrigger($trigger)
   {
     if ($trigger == TRIGGER_INIT_STREAM) {
-      $conf = array($this->getConnection()->getHost(), $this->getConnection()->getUser(), self::XMPP_PROTOCOL_VERSION, self::XMPP_STREAM_NAMESPACE, self::XMPP_STREAM_NAMESPACE_STREAM);
-      $this->getConnection()->send('<stream:stream to="%s" from="%s" version="%s" xmlns="%s" xmlns:stream="%s">', $conf);
+      $conf = array($this->connection->host, $this->client->user, self::XMPP_PROTOCOL_VERSION, self::XMPP_STREAM_NAMESPACE, self::XMPP_STREAM_NAMESPACE_STREAM);
+      $this->connection->send('<stream:stream to="%s" from="%s" version="%s" xmlns="%s" xmlns:stream="%s">', $conf);
     }
   }
 
@@ -40,9 +40,10 @@ class StreamHandler extends EventReceiver
    */
   public function onEvent($eventName)
   {
-    $response   = $this->getResponse();
-    $connection = $this->getConnection();
-    $socket     = $this->getSocket();
+    $response   = $this->response;
+    $connection = $this->connection;
+    $socket     = $this->socket;
+    $client     = $this->client;
 
     switch($eventName) {
       case 'stream:stream':
@@ -58,8 +59,8 @@ class StreamHandler extends EventReceiver
            if ($response->get('mechanisms')->attr('xmlns') == self::XMPP_NAMESPACE_SASL) {
               $this->waitForSASL = false;
 
-              $user = $connection->getUser();
-              $pass = $connection->getPass();
+              $user = $client->user;
+              $pass = $client->pass;
 
               if (empty($user)) {
                 $mechanism  = 'ANONYMOUS';
@@ -121,7 +122,7 @@ class StreamHandler extends EventReceiver
         if (!$response->get('bind')->has('jid') && $response->get('bind')->attr('xmlns') == self::XMPP_NAMESPACE_BIND) {
           $id = $connection->UID();
 
-          $resource = $connection->getResource();
+          $resource = $client->resource;
           if (!empty($resource)) {
             $binding = sprintf('<bind xmlns="%s"><resource>%s</resource></bind>', self::XMPP_NAMESPACE_BIND, $resource);
           } else {
@@ -139,8 +140,8 @@ class StreamHandler extends EventReceiver
 
           $jid = $response->get('jid')->cdata;
 
-          $connection->setJID($jid);
-          $connection->setAuthStatus(true);
+          $client->JID = $jid;
+          $client->authStatus =true;
 
           if ($this->hasSessionFeature) {
             $id = $connection->UID();

@@ -1,6 +1,7 @@
 <?php
 namespace XMPP\EventHandlers;
 
+use XMPP\Client;
 use XMPP\Connection;
 use XMPP\XML\ResponseObject;
 
@@ -9,17 +10,22 @@ abstract class EventReceiver
   /**
    * @var \XMPP\XML\ResponseObject
    */
-  private $response;
+  public $response;
 
   /**
    * @var \XMPP\Connection
    */
-  private $connection;
+  public $connection;
 
   /**
    * @var \XMPP\Socket
    */
-  private $socket;
+  public $socket;
+
+  /**
+   * @var \XMPP\Client
+   */
+  public $client;
 
   /**
    * Events are fired on rules
@@ -38,60 +44,14 @@ abstract class EventReceiver
   /**
    * @param \XMPP\XML\ResponseObject $response
    * @param \XMPP\Connection $connection
+   * @param \XMPP\Client $client
    */
-  public function setObjects(ResponseObject $response, Connection $connection)
+  public function setObjects(ResponseObject $response, Connection $connection, Client $client)
   {
     $this->response   = $response;
     $this->connection = $connection;
     $this->socket     = $connection->getSocket();
-  }
-
-  /**
-   * @param \XMPP\Connection $connection
-   */
-  public function setConnection($connection)
-  {
-    $this->connection = $connection;
-  }
-
-  /**
-   * @param \XMPP\XML\ResponseObject $response
-   */
-  public function setResponse($response)
-  {
-    $this->response = $response;
-  }
-
-  /**
-   * @param \XMPP\Socket $socket
-   */
-  public function setSocket($socket)
-  {
-    $this->socket = $socket;
-  }
-
-  /**
-   * @return \XMPP\Connection
-   */
-  public function getConnection()
-  {
-    return $this->connection;
-  }
-
-  /**
-   * @return \XMPP\XML\ResponseObject
-   */
-  public function getResponse()
-  {
-    return $this->response;
-  }
-
-  /**
-   * @return \XMPP\Socket
-   */
-  public function getSocket()
-  {
-    return $this->socket;
+    $this->client     = $client;
   }
 
   /**
@@ -99,7 +59,7 @@ abstract class EventReceiver
    */
   public function trigger($event)
   {
-    $this->getConnection()->trigger($event);
+    $this->connection->trigger($event);
   }
 
   public function addEvent($event)

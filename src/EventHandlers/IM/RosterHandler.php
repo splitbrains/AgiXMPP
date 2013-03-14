@@ -25,7 +25,7 @@ class RosterHandler extends EventReceiver
       case 'roster_response':
         // @todo handle this stuff
 
-        $children = $this->getResponse()->getAll('item');
+        $children = $this->response->getAll('item');
 
         $json = array();
         foreach($children as $child) {
@@ -47,9 +47,9 @@ class RosterHandler extends EventReceiver
   {
     if ($trigger == TRIGGER_ROSTER_GET) {
       // request roster (contact list)
-      $id = $this->getConnection()->UID();
-      $this->getConnection()->send('<iq from="%s" id="%s" type="get"><query xmlns="%s"/></iq>', array($this->getConnection()->getJID(), $id, self::IQ_ROSTER_NAMESPACE));
-      $this->getConnection()->addIdHandler($id, 'roster_response', $this);
+      $id = $this->connection->UID();
+      $this->connection->send('<iq from="%s" id="%s" type="get"><query xmlns="%s"/></iq>', array($this->client->JID, $id, self::IQ_ROSTER_NAMESPACE));
+      $this->connection->addIdHandler($id, 'roster_response', $this);
     }
   }
 }
