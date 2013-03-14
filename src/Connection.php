@@ -195,7 +195,7 @@ class Connection
         $handler->setObjects($response, $this, $this->client);
         $handler->onEvent($data['customEventName']);
 
-        $this->unsetCustomEvent($key);
+        $this->removeCustomEvent($key);
       }
     }
 
@@ -267,10 +267,14 @@ class Connection
   /**
    * @param $key
    */
-  protected function unsetCustomEvent($key)
+  protected function removeCustomEvent($key)
   {
-    unset($this->_custom_handlers[$key]);
-    $this->_custom_handlers = array_values($this->_custom_handlers);
+    if (isset($this->_custom_handlers[$key])) {
+      unset($this->_custom_handlers[$key]);
+      $this->_custom_handlers = array_values($this->_custom_handlers);
+      return true;
+    }
+    return false;
   }
 
   /**
@@ -349,5 +353,133 @@ class Connection
   public function getSocket()
   {
     return $this->socket;
+  }
+
+  /**
+   * @return string
+   */
+  public function getHost()
+  {
+    return $this->host;
+  }
+
+  /**
+   * @return int
+   */
+  public function getPort()
+  {
+    return $this->port;
+  }
+
+  /**
+   * @return string
+   */
+  public function getUser()
+  {
+    return $this->user;
+  }
+
+  /**
+   * @return string
+   */
+  public function getPass()
+  {
+    return $this->pass;
+  }
+
+  /**
+   * @return string
+   */
+  public function getResource()
+  {
+    return $this->resource;
+  }
+
+  /**
+   * @return string
+   */
+  public function getJID()
+  {
+    return $this->JID;
+  }
+
+  /**
+   * @param bool $auth_status
+   */
+  public function setAuthStatus($auth_status)
+  {
+    $this->auth_status = $auth_status;
+  }
+
+  /**
+   * @return bool
+   */
+  public function getAuthStatus()
+  {
+    return $this->auth_status;
+  }
+
+  /**
+   * @param string $availability
+   */
+  public function setAvailability($availability)
+  {
+    $this->availability = $availability;
+  }
+
+  /**
+   * @return string
+   */
+  public function getAvailability()
+  {
+    return $this->availability;
+  }
+
+  /**
+   * @param string $priority
+   */
+  public function setPriority($priority)
+  {
+    $this->priority = $priority;
+  }
+
+  /**
+   * @return string
+   */
+  public function getPriority()
+  {
+    return $this->priority;
+  }
+
+  /**
+   * @param string $status
+   */
+  public function setStatus($status)
+  {
+    $this->status = $status;
+  }
+
+  /**
+   * @return string
+   */
+  public function getStatus()
+  {
+    return $this->status;
+  }
+
+  /**
+   * @param \XMPP\SendQueue $sendQueue
+   */
+  public function setSendQueue($sendQueue)
+  {
+    $this->sendQueue = $sendQueue;
+  }
+
+  /**
+   * @return \XMPP\SendQueue
+   */
+  public function getSendQueue()
+  {
+    return $this->sendQueue;
   }
 }
