@@ -1,6 +1,6 @@
 <?php
 /**
- * @author Daniel Lehr, ADITION technologies AG, Freiburg, Germany. <daniel.lehr@adition.com>
+ * @author Daniel Lehr <daniel@agixo.de>
  * @internal-coding = utf-8
  * @internal UTF-Chars: ÄÖÜäöüß∆
  * created on 13.01.12 16:40.
