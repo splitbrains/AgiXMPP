@@ -149,15 +149,39 @@ class Connection
    */
   protected function receive()
   {
-    $buf = $this->socket->read();
-    if ($buf) {
-      if ($buf == StreamHandler::XMPP_TERMINATE_STREAM) {
+    $buffer = $this->enclosedBuffer($this->socket->read());
+    if ($buffer !== false) {
+      if ($buffer == StreamHandler::XMPP_TERMINATE_STREAM) {
         $this->socket->close();
       } else {
-        return $this->xmlParser->isValid($buf);
+        return $this->xmlParser->isValid($buffer);
       }
     }
     return false;
+  }
+
+  /**
+   * Determine if the XML buffer is completely enclosed with '<' and '>'.
+   *
+   * @param $buffer
+   * @return bool|string
+   */
+  protected function enclosedBuffer($buffer)
+  {
+    static $unclosedTags = 0, $fullBuffer = '';
+
+    $tagOpenCount = substr_count($buffer, '<');
+    $tagCloseCount = substr_count($buffer, '>');
+
+    if ($tagOpenCount + $unclosedTags != $tagCloseCount) {
+      $fullBuffer .= $buffer;
+      $unclosedTags += $tagOpenCount - $tagCloseCount;
+      return false;
+    }
+    $enclosedBuffer = $fullBuffer.$buffer;
+    $unclosedTags = 0;
+    $fullBuffer = '';
+    return $enclosedBuffer;
   }
 
   /**
