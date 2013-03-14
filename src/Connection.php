@@ -156,6 +156,7 @@ class Connection
       } else {
         return $this->xmlParser->isValid($buffer);
       }
+      Logger::log($buffer, 'RECV');
     }
     return false;
   }

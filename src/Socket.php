@@ -66,15 +66,15 @@ class Socket
 
   /**
    * @param int $bytes
-   * @return bool|string
+   * @return string
    */
   public function read($bytes = 8192)
   {
-    $buf = fread($this->socket, $bytes);
-    if (strlen($buf) > 0) {
-      Logger::log($buf, 'RECV');
-      return $buf;
+    $buffer = fread($this->socket, $bytes);
+    if (strlen($buffer) > 0) {
+      return $buffer;
     }
+    return '';
   }
 
   /**
