@@ -10,20 +10,12 @@ class Socket
   /**
    * @var resource
    */
-  protected $socket = null;
+  private $socket = null;
 
   /**
    * @var bool
    */
-  protected $connected = false;
-
-  /**
-   * @return resource
-   */
-  public function getSocket()
-  {
-    return $this->socket;
-  }
+  private $connected = false;
 
   /**
    * @param string $protocol
@@ -113,7 +105,7 @@ class Socket
    */
   public function hasTimedOut()
   {
-    $info = @stream_get_meta_data($this->getSocket());
+    $info = @stream_get_meta_data($this->socket);
 
     if (!$info || $info['timed_out']) {
       $this->connected = false;

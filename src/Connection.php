@@ -32,6 +32,7 @@ class Connection
   public $client;
 
 
+
   /**
    * @var \XMPP\Socket The basic socket stream
    */
@@ -86,7 +87,7 @@ class Connection
    */
   public function connect()
   {
-    $conn = $this->getSocket()->open('tcp', $this->host, $this->port);
+    $conn = $this->socket->open('tcp', $this->host, $this->port);
     Logger::log('Attempting to connect to '.$this->host.':'.$this->port.'.');
 
     if ($conn) {
@@ -114,9 +115,9 @@ class Connection
   public function disconnect($closeStream = false)
   {
     if ($closeStream) {
-      $this->getSocket()->write(StreamHandler::XMPP_TERMINATE_STREAM);
+      $this->socket->write(StreamHandler::XMPP_TERMINATE_STREAM);
     }
-    $this->getSocket()->close();
+    $this->socket->close();
     Logger::log('Disconnected');
   }
 
@@ -140,7 +141,7 @@ class Connection
       $this->handleEvents($response);
     }
 
-    return !$this->getSocket()->hasTimedOut() && $this->getSocket()->isConnected();
+    return !$this->socket->hasTimedOut() && $this->socket->isConnected();
   }
 
   /**
@@ -148,10 +149,10 @@ class Connection
    */
   protected function receive()
   {
-    $buf = $this->getSocket()->read();
+    $buf = $this->socket->read();
     if ($buf) {
       if ($buf == StreamHandler::XMPP_TERMINATE_STREAM) {
-        $this->getSocket()->close();
+        $this->socket->close();
       } else {
         return $this->xmlParser->isValid($buf);
       }
@@ -168,7 +169,7 @@ class Connection
     if (count($args) > 0) {
       $data = vsprintf($data, $args);
     }
-    $this->getSocket()->write($data);
+    $this->socket->write($data);
   }
 
   /**
@@ -340,14 +341,6 @@ class Connection
   protected function clearTriggers()
   {
     $this->_triggers = array();
-  }
-
-  /**
-   * @param \XMPP\Socket $socket
-   */
-  protected function setSocket(Socket $socket)
-  {
-    $this->socket = $socket;
   }
 
   /**
