@@ -37,7 +37,6 @@ class Parser
 
   /**
    *
-   *
    */
   public function __construct()
   {
@@ -60,15 +59,48 @@ class Parser
    */
   public function isValid($string)
   {
+    $fullString = $this->fullString($string);
+    if ($fullString === false) {
+      return false;
+    } else {
+      $string = $fullString;
+    }
+
     // the XML parser, stops parsing when re-sent
     // https://bugs.php.net/bug.php?id=60792
-    $string = preg_replace("/^<\?xml.*?[^\?>]\?>/i", '', $string);
+    $string = preg_replace('/<\?xml.*?[^?>]\?>/i', '', $string);
+
     if (!$this->parse($string)) {
       return false;
     }
     // at least the second level has to be closed; that ensures that all information is gathered
     $tagClosed = isset($this->tree[2]) ? $this->tree[2]->tag_closed : true;
     return count($this->tree) > 0 && $tagClosed;
+  }
+
+  /**
+   * Rather clunky solution to determine if the XML string is completed
+   * Had this effect every time at the openfire server
+   *
+   * @param $string
+   * @return bool|string
+   */
+  protected function fullString($string)
+  {
+    static $unclosedTags = 0, $fullString = '';
+
+    $tagOpenCount = substr_count($string, '<');
+    $tagCloseCount = substr_count($string, '>');
+
+    if ($tagOpenCount + $unclosedTags != $tagCloseCount) {
+      $fullString .= $string;
+      $unclosedTags += $tagOpenCount - $tagCloseCount;
+      return false;
+    }
+    $str = $fullString.$string;
+    $unclosedTags = 0;
+    $fullString = '';
+    return $str;
   }
 
   /**
@@ -164,7 +196,7 @@ class Parser
   protected function tag_close($parser, $tag)
   {
     $node = $this->getNode();
-    $node->tag_closed = 1;
+    $node->tag_closed = true;
 
     if ($this->depth > 2) {
       $parent = $this->getNode(-1);
