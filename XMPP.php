@@ -1,15 +1,33 @@
 <?php
+namespace XMPP;
+
+use FilesystemIterator;
+use RecursiveDirectoryIterator;
+use RecursiveIteratorIterator;
+
 error_reporting(E_ALL | E_STRICT);
 ini_set('display_errors', true);
 
-require_once './src/Socket.php';
-require_once './src/Connection.php';
-require_once './src/Client.php';
-require_once './src/XML/Parser.php';
-require_once './src/XML/Node.php';
-require_once './src/XML/ResponseObject.php';
-require_once './src/Logger.php';
+define('SRC_PATH', __DIR__ . '/src');
+define('NS', __NAMESPACE__);
 
-foreach(glob('./src/EventHandlers/*.php') as $fileName) {
-  require_once $fileName;
+
+spl_autoload_register(function($class) {
+  // remove the leading namespace
+  if (substr($class, 0, strlen(NS)) == NS) {
+    $class = substr($class, strlen(NS), strlen($class));
+  }
+  $file = SRC_PATH . str_replace('\\', '/', $class) . '.php';
+
+  require_once $file;
+});
+
+$dir = new RecursiveDirectoryIterator(SRC_PATH, FilesystemIterator::CURRENT_AS_FILEINFO);
+$it  = new RecursiveIteratorIterator($dir, RecursiveIteratorIterator::SELF_FIRST);
+
+/** @var $it \SplFileInfo */
+foreach($it as $file => $obj) {
+  if ($it->isFile() && $it->getExtension() == 'php') {
+    require_once $file;
+  }
 }
