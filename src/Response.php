@@ -5,14 +5,14 @@
  * @internal UTF-Chars: ÄÖÜäöüß∆
  * created on 18.01.12 11:31.
  */
-namespace XMPP\XML;
+namespace XMPP;
 
 use RecursiveArrayIterator;
 use RecursiveIteratorIterator;
 
 use XMPP\XML\Node;
 
-class ResponseObject
+class Response
 {
   /**
    * @var RecursiveIteratorIterator
