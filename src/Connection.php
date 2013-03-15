@@ -4,15 +4,18 @@ namespace XMPP;
 use XMPP\Client;
 use XMPP\Socket;
 use XMPP\Logger;
-use XMPP\XML\ResponseObject;
-use XMPP\XML\Parser;
+use XMPP\Response;
+use XMPP\Event;
 use XMPP\EventHandlers\EventReceiver;
+use XMPP\XML\Parser;
 
 // default handlers which are registered in registerDefaultHandlers()
 use XMPP\EventHandlers\StreamHandler;
 use XMPP\EventHandlers\PingHandler;
 use XMPP\EventHandlers\RosterHandler;
 use XMPP\EventHandlers\PresenceHandler;
+
+use SimpleXMLElement;
 
 class Connection
 {
@@ -82,6 +85,14 @@ class Connection
   }
 
   /**
+   * just try it
+   */
+  public function __destruct()
+  {
+    $this->disconnect();
+  }
+
+  /**
    * Connects to the host with the settings from the config (set in the constructor)
    * @return bool
    */
@@ -137,7 +148,7 @@ class Connection
   public function isConnected()
   {
     if ($this->receive()) {
-      $response = new ResponseObject($this->xmlParser->getTree());
+      $response = new Response($this->xmlParser->getTree());
       $this->handleEvents($response);
     }
 
@@ -156,7 +167,6 @@ class Connection
       } else {
         return $this->xmlParser->isValid($buffer);
       }
-      Logger::log($buffer, 'RECV');
     }
     return false;
   }
@@ -188,13 +198,31 @@ class Connection
   /**
    * @param string $data
    * @param array $args
+   * @param bool $awaitResponse
+   * @return \XMPP\Event|null
    */
-  public function send($data, $args = array())
+  public function send($data, $args = array(), $awaitResponse = false)
   {
+    $return = null;
+
+    if ($awaitResponse === true) {
+      libxml_use_internal_errors(true);
+      $xml = new SimpleXMLElement($data);
+      if (!isset($xml->attributes()->id)) {
+        $uid = $this->UID();
+        $xml->addAttribute('id', $uid);
+        $data = preg_replace(Parser::XML_DECL_REGEX, '', $xml->asXML());
+
+        $return = new Event($this, $xml->getName(), $uid);
+      }
+    }
+
     if (count($args) > 0) {
       $data = vsprintf($data, $args);
     }
     $this->socket->write($data);
+
+    return $return;
   }
 
   /**
@@ -209,9 +237,9 @@ class Connection
   }
 
   /**
-   * @param \XMPP\XML\ResponseObject $response
+   * @param \XMPP\Response $response
    */
-  protected function handleEvents(ResponseObject $response)
+  protected function handleEvents(Response $response)
   {
     foreach($this->getCustomEvents() as $key => $data) {
       if ($response->getByAttr($data['attr'], $data['value'])) {
@@ -241,7 +269,7 @@ class Connection
   {
     /** @var $handler \XMPP\EventHandlers\EventReceiver */
     foreach($this->getHandlers() as $handler) {
-      $handler->setObjects(new ResponseObject(array()), $this, $this->client);
+      $handler->setObjects(new Response(array()), $this, $this->client);
       $handler->onTrigger($trigger);
     }
   }
@@ -291,6 +319,7 @@ class Connection
 
   /**
    * @param $key
+   * @return bool
    */
   protected function removeCustomEvent($key)
   {
