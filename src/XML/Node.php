@@ -7,6 +7,8 @@
  */
 namespace XMPP\XML;
 
+use XMPP\Response;
+
 class Node
 {
   public $tag = '';
@@ -42,7 +44,7 @@ class Node
    */
   public function has($tag)
   {
-    $r = new ResponseObject($this->children);
+    $r = new Response($this->children);
     if (!empty($r->get($tag)->tag)) {
       return true;
     }
@@ -55,7 +57,7 @@ class Node
    */
   public function get($tag)
   {
-    $r = new ResponseObject($this->children);
+    $r = new Response($this->children);
     if (!empty($r->get($tag)->tag)) {
       return $r->get($tag);
     }

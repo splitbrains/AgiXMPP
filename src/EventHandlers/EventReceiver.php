@@ -9,12 +9,12 @@ namespace XMPP\EventHandlers;
 
 use XMPP\Client;
 use XMPP\Connection;
-use XMPP\XML\ResponseObject;
+use XMPP\Response;
 
 abstract class EventReceiver
 {
   /**
-   * @var \XMPP\XML\ResponseObject
+   * @var \XMPP\Response
    */
   public $response;
 
@@ -48,11 +48,11 @@ abstract class EventReceiver
   abstract public function onTrigger($trigger);
 
   /**
-   * @param \XMPP\XML\ResponseObject $response
+   * @param \XMPP\Response $response
    * @param \XMPP\Connection $connection
    * @param \XMPP\Client $client
    */
-  public function setObjects(ResponseObject $response, Connection $connection, Client $client)
+  public function setObjects(Response $response, Connection $connection, Client $client)
   {
     $this->response = $response;
     $this->connection = $connection;
