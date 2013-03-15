@@ -71,10 +71,10 @@ class Socket
   public function read($bytes = 8192)
   {
     $buffer = fread($this->socket, $bytes);
+    Logger::log($buffer, 'RECV');
     if (strlen($buffer) > 0) {
       return $buffer;
     }
-    return '';
   }
 
   /**
