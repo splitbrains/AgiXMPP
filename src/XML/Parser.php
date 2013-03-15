@@ -35,6 +35,8 @@ class Parser
    */
   protected $rootNode = null;
 
+  const XML_DECL_REGEX = '/<\?xml.*?[^?>]\?>/i';
+
   /**
    *
    */
@@ -61,7 +63,7 @@ class Parser
   {
     // the XML parser, stops parsing when re-sent
     // https://bugs.php.net/bug.php?id=60792
-    $string = preg_replace('/<\?xml.*?[^?>]\?>/i', '', $string);
+    $string = preg_replace(self::XML_DECL_REGEX, '', $string);
 
     if (!$this->parse($string)) {
       return false;
