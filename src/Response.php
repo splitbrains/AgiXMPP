@@ -22,7 +22,7 @@ class Response
   /**
    * @param array $nodes
    */
-  public function __construct(array $nodes)
+  public function __construct($nodes = array())
   {
     $this->iterator = new RecursiveIteratorIterator(new RecursiveArrayIterator($nodes), RecursiveIteratorIterator::SELF_FIRST);
   }
@@ -41,6 +41,18 @@ class Response
       }
     }
     return new Node();
+  }
+
+  public function has($tag)
+  {
+    foreach($this->iterator as $key => $node) {
+      if ($node instanceof Node || is_numeric($key)) {
+        if ($node->tag === $tag) {
+          return true;
+        }
+      }
+    }
+    return false;
   }
 
   /**

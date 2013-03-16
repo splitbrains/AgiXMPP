@@ -1,6 +1,7 @@
 <?php
 namespace XMPP\EventHandlers;
 
+use XMPP\Handler;
 use XMPP\EventHandlers\EventReceiver;
 use XMPP\Logger;
 
@@ -35,16 +36,16 @@ class StreamHandler extends EventReceiver
   }
 
   /**
-   * @param string $eventName
+   * @param string $event
    */
-  public function onEvent($eventName)
+  public function onEvent($event)
   {
     $response   = $this->response;
     $connection = $this->connection;
     $socket     = $this->socket;
     $client     = $this->client;
 
-    switch($eventName) {
+    switch($event) {
       case 'stream:stream':
         $this->sessionId = $response->get('stream:stream')->attr('id');
         // initiating stream
@@ -119,8 +120,6 @@ class StreamHandler extends EventReceiver
 
       case 'bind':
         if (!$response->get('bind')->has('jid') && $response->get('bind')->attr('xmlns') == self::XMPP_NAMESPACE_BIND) {
-          $id = $connection->UID();
-
           $resource = $client->resource;
           if (!empty($resource)) {
             $binding = sprintf('<bind xmlns="%s"><resource>%s</resource></bind>', self::XMPP_NAMESPACE_BIND, $resource);
@@ -128,33 +127,56 @@ class StreamHandler extends EventReceiver
             $binding = sprintf('<bind xmlns="%s"/>', self::XMPP_NAMESPACE_BIND);
           }
 
-          $connection->send('<iq id="%s" type="set">%s</iq>', array($id, $binding));
-          $connection->addIdHandler($id, 'custom_bind_event', $this);
+          $hasSessionFeature = $this->hasSessionFeature;
+
+          $connection
+            ->send('<iq type="set">%s</iq>', array($binding), true)
+            ->onResponse(function($h) use ($hasSessionFeature) {
+              if ($h->response->get('iq')->attr('type') == 'result') {
+                Logger::log('Successfully authed and connected');
+
+                $jid = $h->response->get('jid')->cdata;
+
+                $h->client->JID = $jid;
+                $h->client->authStatus = true;
+
+                if ($hasSessionFeature) {
+                  $h->connection
+                    ->send('<iq type="set"><session xmlns="%s"/></iq>', array(self::XMPP_NAMESPACE_SESSION), true)
+                    ->onResponse(function($h) {
+                      if ($h->response->get('iq')->attr('type') == 'result') {
+                        Logger::log('Session started');
+                        $h->trigger(TRIGGER_ROSTER_GET);
+                      }
+                    });
+                }
+              }
+          });
         }
         break;
 
-      case 'custom_bind_event':
-        if ($response->get('iq')->attr('type') == 'result') {
-          Logger::log('Successfully authed and connected');
-
-          $jid = $response->get('jid')->cdata;
-
-          $client->JID = $jid;
-          $client->authStatus =true;
-
-          if ($this->hasSessionFeature) {
-            $id = $connection->UID();
-            $connection->send('<iq id="%s" type="set"><session xmlns="%s"/></iq>', array($id, self::XMPP_NAMESPACE_SESSION));
-            $connection->addIdHandler($id, 'session_started', $this);
-          }
-        }
-        break;
-      case 'session_started':
-        if ($response->get('iq')->attr('type') == 'result') {
-          Logger::log('Session started');
-          $this->trigger(TRIGGER_ROSTER_GET);
-        }
-        break;
+//      case 'custom_bind_event':
+//        if ($response->get('iq')->attr('type') == 'result') {
+//          Logger::log('Successfully authed and connected');
+//
+//          $jid = $response->get('jid')->cdata;
+//
+//          $client->JID = $jid;
+//          $client->authStatus =true;
+//
+//          if ($this->hasSessionFeature) {
+//            $id = $connection->UID();
+//            $connection->send('<iq id="%s" type="set"><session xmlns="%s"/></iq>', array($id, self::XMPP_NAMESPACE_SESSION));
+//            $connection->addIdHandler($id, 'session_started', $this);
+//          }
+//        }
+//        break;
+//      case 'session_started':
+//        if ($response->get('iq')->attr('type') == 'result') {
+//          Logger::log('Session started');
+//          $this->trigger(TRIGGER_ROSTER_GET);
+//        }
+//        break;
     }
   }
 }

@@ -8,6 +8,7 @@
  
 namespace XMPP\EventHandlers;
 
+use XMPP\Handler;
 use XMPP\EventHandlers\EventReceiver;
 
 class RosterHandler extends EventReceiver

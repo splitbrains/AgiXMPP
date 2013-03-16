@@ -11,11 +11,12 @@ use XMPP\EventHandlers\EventReceiver;
 
 class DiscoveryHandler extends EventReceiver
 {
-  public function onEvent($eventName) {
-    if ($eventName == 'disco_items') {
-      //$response->setFilter('item');
-      print_r($this->response->get('item')->attrs());
-    }
+  public function onEvent($event)
+  {
+//    if ($event == 'disco_items') {
+//      //$response->setFilter('item');
+//      print_r($this->response->get('item')->attrs());
+//    }
   }
 
   /**
@@ -25,9 +26,11 @@ class DiscoveryHandler extends EventReceiver
   {
     switch($trigger) {
       case TRIGGER_SESSION_STARTED:
-        $id = $this->connection->UID();
-        $this->connection->send('<iq type="get" id="%s"><query xmlns="http://jabber.org/protocol/disco#items"/></iq>', array($id));
-        $this->connection->addIdHandler($id, 'disco_items', $this);
+        $this->connection
+             ->send('<iq type="get"><query xmlns="http://jabber.org/protocol/disco#items"/></iq>', true)
+             ->onResponse(function($h) {
+               print_r($h->response->get('item')->attrs());
+            });
         break;
     }
   }

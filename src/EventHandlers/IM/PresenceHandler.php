@@ -7,6 +7,7 @@
  */
 namespace XMPP\EventHandlers;
 
+use XMPP\Handler;
 use XMPP\EventHandlers\EventReceiver;
 
 class PresenceHandler extends EventReceiver

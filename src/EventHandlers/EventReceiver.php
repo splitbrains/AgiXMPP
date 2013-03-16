@@ -9,6 +9,7 @@ namespace XMPP\EventHandlers;
 
 use XMPP\Client;
 use XMPP\Connection;
+use XMPP\Handler;
 use XMPP\Response;
 
 abstract class EventReceiver
@@ -34,12 +35,22 @@ abstract class EventReceiver
   public $client;
 
   /**
+   * @var string|null
+   */
+  public $uid = null;
+
+  /**
+   * @var array
+   */
+  public $eventTags = array();
+
+  /**
    * Events are fired on rules
    *
    * @abstract
-   * @param string $eventName
+   * @param string $event
    */
-  abstract public function onEvent($eventName);
+  abstract public function onEvent($event);
 
   /**
    * @abstract
@@ -50,14 +61,13 @@ abstract class EventReceiver
   /**
    * @param \XMPP\Response $response
    * @param \XMPP\Connection $connection
-   * @param \XMPP\Client $client
    */
-  public function setObjects(Response $response, Connection $connection, Client $client)
+  public function setObjects(Response $response, Connection $connection)
   {
     $this->response = $response;
     $this->connection = $connection;
+    $this->client = $connection->client;
     $this->socket = $connection->getSocket();
-    $this->client = $client;
   }
 
   /**
@@ -66,10 +76,5 @@ abstract class EventReceiver
   public function trigger($event)
   {
     $this->connection->trigger($event);
-  }
-
-  public function addEvent($event)
-  {
-
   }
 }
