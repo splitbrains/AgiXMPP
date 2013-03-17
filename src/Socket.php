@@ -10,20 +10,12 @@ class Socket
   /**
    * @var resource
    */
-  protected $socket = null;
+  private $socket = null;
 
   /**
    * @var bool
    */
-  protected $connected = false;
-
-  /**
-   * @return resource
-   */
-  public function getSocket()
-  {
-    return $this->socket;
-  }
+  private $connected = false;
 
   /**
    * @param string $protocol
@@ -74,24 +66,27 @@ class Socket
 
   /**
    * @param int $bytes
-   * @return bool|string
+   * @return string
    */
   public function read($bytes = 8192)
   {
-    $buf = fread($this->socket, $bytes);
-    if (strlen($buf) > 0) {
-      Logger::log($buf, 'RECV');
-      return $buf;
+    $buffer = fread($this->socket, $bytes);
+    Logger::log($buffer, 'RECV');
+    if (strlen($buffer) > 0) {
+      return $buffer;
     }
   }
 
   /**
    * @param $data
+   * @return bool
    */
   public function write($data)
   {
     Logger::log($data, 'SENT');
-    fwrite($this->socket, $data);
+    $write = fwrite($this->socket, $data);
+
+    return $write === strlen($data);
   }
 
   /**
@@ -110,7 +105,7 @@ class Socket
    */
   public function hasTimedOut()
   {
-    $info = @stream_get_meta_data($this->getSocket());
+    $info = @stream_get_meta_data($this->socket);
 
     if (!$info || $info['timed_out']) {
       $this->connected = false;

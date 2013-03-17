@@ -1,0 +1,46 @@
+<?php
+/**
+ * @author Daniel Lehr <daniel@agixo.de>
+ * @internal-coding = utf-8
+ * @internal UTF-Chars: ÄÖÜäöüß∆
+ * created on 12.01.12 14:21.
+ */
+ 
+namespace XMPP\EventHandlers;
+
+use XMPP\Connection;
+use XMPP\EventHandlers\EventHandler;
+use XMPP\Response;
+
+class RosterHandler extends EventHandler
+{
+  const ROSTER_FILE = 'data/contacts.json';
+
+  const IQ_ROSTER_NAMESPACE = 'jabber:iq:roster';
+
+  public function registerTriggers()
+  {
+    $this->onTrigger(TRIGGER_ROSTER_GET, function(Connection $c) {
+      // request roster (contact list)
+      $c ->send('<iq from="%s" type="get"><query xmlns="%s"/></iq>',array($c->client->JID, RosterHandler::IQ_ROSTER_NAMESPACE), true)
+         ->onResponse(function(Response $r, Connection $c) {
+          $children = $r->getAll('item');
+
+          $json = array();
+          foreach($children as $child) {
+            $json[] = array('jid' => $child->attr('jid'), 'subscription' => $child->attr('subscription'));
+          }
+          $json = json_encode($json);
+
+          file_put_contents(RosterHandler::ROSTER_FILE, $json);
+
+          $c->trigger(TRIGGER_PRESENCE_INIT);
+        });
+    });
+  }
+
+  public function registerEvents()
+  {
+    return;
+  }
+}

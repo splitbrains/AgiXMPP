@@ -1,18 +1,18 @@
 <?php
 /**
- * @author Daniel Lehr, ADITION technologies AG, Freiburg, Germany. <daniel.lehr@adition.com>
+ * @author Daniel Lehr <daniel@agixo.de>
  * @internal-coding = utf-8
  * @internal UTF-Chars: ÄÖÜäöüß∆
  * created on 18.01.12 11:31.
  */
-namespace XMPP\XML;
+namespace XMPP;
 
 use RecursiveArrayIterator;
 use RecursiveIteratorIterator;
 
 use XMPP\XML\Node;
 
-class ResponseObject
+class Response
 {
   /**
    * @var RecursiveIteratorIterator
@@ -20,10 +20,16 @@ class ResponseObject
   protected $iterator;
 
   /**
+   * @var array
+   */
+  private $plain;
+
+  /**
    * @param array $nodes
    */
-  public function __construct(array $nodes)
+  public function __construct($nodes = array())
   {
+    $this->plain = $nodes;
     $this->iterator = new RecursiveIteratorIterator(new RecursiveArrayIterator($nodes), RecursiveIteratorIterator::SELF_FIRST);
   }
 
@@ -41,6 +47,36 @@ class ResponseObject
       }
     }
     return new Node();
+  }
+
+  public function has($tag)
+  {
+    foreach($this->iterator as $key => $node) {
+      if ($node instanceof Node || is_numeric($key)) {
+        if ($node->tag === $tag) {
+          return true;
+        }
+      }
+    }
+    return false;
+  }
+
+  /**
+   * @param string $tag
+   * @return Node[]
+   */
+  public function getAll($tag)
+  {
+    $ret = array();
+
+    foreach($this->iterator as $key => $node) {
+      if ($node instanceof Node || is_numeric($key)) {
+        if ($node->tag === $tag) {
+          $ret[] = $node;
+        }
+      }
+    }
+    return $ret;
   }
 
   /**
