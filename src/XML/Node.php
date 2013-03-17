@@ -1,11 +1,13 @@
 <?php
 /**
- * @author Daniel Lehr, ADITION technologies AG, Freiburg, Germany. <daniel.lehr@adition.com>
+ * @author Daniel Lehr <daniel@agixo.de>
  * @internal-coding = utf-8
  * @internal UTF-Chars: ÄÖÜäöüß∆
  * created on 13.01.12 16:40.
  */
 namespace XMPP\XML;
+
+use XMPP\Response;
 
 class Node
 {
@@ -40,12 +42,41 @@ class Node
    * @param $tag
    * @return bool
    */
-  public function hasSub($tag)
+  public function has($tag)
   {
-    $r = new ResponseObject($this->children);
+    $r = new Response($this->children);
     if (!empty($r->get($tag)->tag)) {
       return true;
     }
     return false;
+  }
+
+  /**
+   * @param string $tag
+   * @return Node
+   */
+  public function get($tag)
+  {
+    $r = new Response($this->children);
+    if (!empty($r->get($tag)->tag)) {
+      return $r->get($tag);
+    }
+    return false;
+  }
+
+  /**
+   * @return string
+   */
+  public function cdata()
+  {
+    return $this->cdata;
+  }
+
+  /**
+   * @return array
+   */
+  public function children()
+  {
+    return $this->children;
   }
 }

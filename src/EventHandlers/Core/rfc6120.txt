@@ -1,0 +1,2 @@
+http://www.rfc-editor.org/rfc/rfc6120.txt
+http://xmpp.org/rfcs/rfc6120.html
