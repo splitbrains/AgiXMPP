@@ -8,33 +8,23 @@
  
 namespace XMPP\EventHandlers;
 
-use XMPP\Handler;
-use XMPP\EventHandlers\EventReceiver;
+use XMPP\Connection;
+use XMPP\EventHandlers\EventHandler;
+use XMPP\Response;
 
-class RosterHandler extends EventReceiver
+class RosterHandler extends EventHandler
 {
   const ROSTER_FILE = 'data/contacts.json';
 
   const IQ_ROSTER_NAMESPACE = 'jabber:iq:roster';
 
-  /**
-   * @param string $event
-   */
-  public function onEvent($event)
+  public function registerTriggers()
   {
-  }
-
-  /**
-   * @param string $trigger
-   */
-  public function onTrigger($trigger)
-  {
-    if ($trigger == TRIGGER_ROSTER_GET) {
+    $this->onTrigger(TRIGGER_ROSTER_GET, function(Connection $c) {
       // request roster (contact list)
-      $this->connection
-        ->send('<iq from="%s" type="get"><query xmlns="%s"/></iq>',array($this->client->JID, self::IQ_ROSTER_NAMESPACE), true)
-        ->onResponse(function($e) {
-          $children = $e->response->getAll('item');
+      $c ->send('<iq from="%s" type="get"><query xmlns="%s"/></iq>',array($c->client->JID, RosterHandler::IQ_ROSTER_NAMESPACE), true)
+         ->onResponse(function(Response $r, Connection $c) {
+          $children = $r->getAll('item');
 
           $json = array();
           foreach($children as $child) {
@@ -42,10 +32,15 @@ class RosterHandler extends EventReceiver
           }
           $json = json_encode($json);
 
-          file_put_contents(self::ROSTER_FILE, $json);
+          file_put_contents(RosterHandler::ROSTER_FILE, $json);
 
-          $e->trigger(TRIGGER_PRESENCE_INIT);
+          $c->trigger(TRIGGER_PRESENCE_INIT);
         });
-    }
+    });
+  }
+
+  public function registerEvents()
+  {
+    return;
   }
 }

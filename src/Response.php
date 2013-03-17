@@ -20,10 +20,16 @@ class Response
   protected $iterator;
 
   /**
+   * @var array
+   */
+  private $plain;
+
+  /**
    * @param array $nodes
    */
   public function __construct($nodes = array())
   {
+    $this->plain = $nodes;
     $this->iterator = new RecursiveIteratorIterator(new RecursiveArrayIterator($nodes), RecursiveIteratorIterator::SELF_FIRST);
   }
 

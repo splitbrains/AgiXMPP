@@ -7,31 +7,24 @@
  */
 namespace XMPP\EventHandlers;
 
-use XMPP\EventHandlers\EventReceiver;
+use XMPP\Connection;
+use XMPP\EventHandlers\EventHandler;
+use XMPP\Response;
 
-class DiscoveryHandler extends EventReceiver
+class DiscoveryHandler extends EventHandler
 {
-  public function onEvent($event)
+  public function registerTriggers()
   {
-//    if ($event == 'disco_items') {
-//      //$response->setFilter('item');
-//      print_r($this->response->get('item')->attrs());
-//    }
+    $this->onTrigger(TRIGGER_SESSION_STARTED, function(Connection $c) {
+      $c ->send('<iq type="get"><query xmlns="http://jabber.org/protocol/disco#items"/></iq>', true)
+         ->onResponse(function(Response $r) {
+           print_r($r->get('item')->attrs());
+         });
+    });
   }
 
-  /**
-   * @param string $trigger
-   */
-  public function onTrigger($trigger)
+  public function registerEvents()
   {
-    switch($trigger) {
-      case TRIGGER_SESSION_STARTED:
-        $this->connection
-             ->send('<iq type="get"><query xmlns="http://jabber.org/protocol/disco#items"/></iq>', true)
-             ->onResponse(function($h) {
-               print_r($h->response->get('item')->attrs());
-            });
-        break;
-    }
+    return;
   }
 }

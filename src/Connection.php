@@ -11,7 +11,7 @@ use XMPP\Client;
 use XMPP\Socket;
 use XMPP\Logger;
 use XMPP\Response;
-use XMPP\EventHandlers\EventReceiver;
+use XMPP\EventHandlers\EventHandler;
 use XMPP\XML\Parser;
 
 // default handlers which are registered in registerDefaultHandlers()
@@ -48,9 +48,14 @@ class Connection
   private $xmlParser;
 
   /**
-   * @var \XMPP\EventHandlers\EventReceiver[]
+   * @var \XMPP\EventHandlers\EventHandler[]
    */
   private $eventHandlers = array();
+
+  /**
+   * @var array
+   */
+  private $store = array();
 
   /**
    * @var int
@@ -146,7 +151,8 @@ class Connection
    */
   protected function receive()
   {
-    $buffer = $this->enclosedBuffer($this->socket->read());
+    $buffer = $this->isEnclosedBuffer($this->socket->read());
+
     if ($buffer !== false) {
       if ($buffer == StreamHandler::XMPP_TERMINATE_STREAM) {
         $this->socket->close();
@@ -163,7 +169,7 @@ class Connection
    * @param $buffer
    * @return bool|string
    */
-  protected function enclosedBuffer($buffer)
+  protected function isEnclosedBuffer($buffer)
   {
     static $unclosedTags = 0, $fullBuffer = '';
 
@@ -209,19 +215,17 @@ class Connection
    */
   private function registerDefaultHandlers()
   {
-    $this->addEventHandler(array('stream:stream', 'stream:features', 'stream:error', 'starttls', 'proceed', 'success', 'failure', 'bind'), new StreamHandler());
-    $this->addEventHandler(array('iq', 'ping'), new PingHandler());
-    $this->addEventHandler(array('presence'), new PresenceHandler());
-    $this->addEventHandler(array(), new RosterHandler());
+    $this->addEventHandler(new StreamHandler());
+    $this->addEventHandler(new PingHandler());
+    $this->addEventHandler(new PresenceHandler());
+    $this->addEventHandler(new RosterHandler());
   }
 
   /**
-   * @param $eventTags
-   * @param EventHandlers\EventReceiver $handler
+   * @param EventHandlers\EventHandler $handler
    */
-  public function addEventHandler($eventTags, EventReceiver $handler)
+  public function addEventHandler(EventHandler $handler)
   {
-    $handler->eventTags = $eventTags;
     $this->eventHandlers[] = $handler;
   }
 
@@ -231,12 +235,24 @@ class Connection
   private function handleEvents(Response $response)
   {
     foreach($this->eventHandlers as $handler) {
-      foreach($handler->eventTags as $eventTag) {
-        if ($response->has($eventTag)) {
-          $handler->setObjects($response, $this);
-          $handler->onEvent($eventTag);
+      foreach($handler->getEvents() as $eventTag => $events) {
+        foreach($events as $callback) {
+          if ($response->has($eventTag)) {
+            $this->invokeEvent($callback, array($response, $this));
+          }
         }
       }
+    }
+  }
+
+  /**
+   * @param $callback
+   * @param $parameters
+   */
+  public function invokeEvent($callback, $parameters)
+  {
+    if (is_callable($callback) || is_array($callback)) {
+      call_user_func_array($callback, $parameters);
     }
   }
 
@@ -246,8 +262,12 @@ class Connection
   public function trigger($trigger)
   {
     foreach($this->eventHandlers as $handler) {
-      $handler->setObjects(new Response(), $this);
-      $handler->onTrigger($trigger);
+      //$handler->onTrigger($trigger, $this);
+      foreach($handler->getTriggers() as $name => $callback) {
+        if ($trigger == $name) {
+          $this->invokeEvent($callback, array($this));
+        }
+      }
     }
   }
 
@@ -257,5 +277,26 @@ class Connection
   public function getSocket()
   {
     return $this->socket;
+  }
+
+  /**
+   * @param $key
+   * @param $val
+   */
+  public function set($key, $val)
+  {
+    $this->store[$key] = $val;
+  }
+
+  /**
+   * @param $key
+   * @return mixed
+   */
+  public function get($key)
+  {
+    if (isset($this->store[$key])) {
+      return $this->store[$key];
+    }
+    return null;
   }
 }

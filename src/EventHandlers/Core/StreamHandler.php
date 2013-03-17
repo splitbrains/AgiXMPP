@@ -1,18 +1,19 @@
 <?php
+/**
+ * @author Daniel Lehr <daniel@agixo.de>
+ * @internal-coding = utf-8
+ * @internal UTF-Chars: ÄÖÜäöüß∆
+ * created on 09.01.12 17:06.
+ */
 namespace XMPP\EventHandlers;
 
-use XMPP\Handler;
-use XMPP\EventHandlers\EventReceiver;
+use XMPP\Connection;
+use XMPP\EventHandlers\EventHandler;
 use XMPP\Logger;
+use XMPP\Response;
 
-class StreamHandler extends EventReceiver
+class StreamHandler extends EventHandler
 {
-  protected $sessionId;
-  protected $waitForSASL = false;
-  protected $waitForAuthSuccess = false;
-  protected $waitForBind = false;
-  protected $hasSessionFeature = false;
-
   const XMPP_PROTOCOL_VERSION  = '1.0';
   const XMPP_STANDARD_LANG     = 'en';
   const XMPP_STREAM_NAMESPACE  = 'jabber:client';
@@ -24,159 +25,127 @@ class StreamHandler extends EventReceiver
 
   const XMPP_TERMINATE_STREAM = '</stream:stream>';
 
-  /**
-   * @param string $trigger
-   */
-  public function onTrigger($trigger)
+
+  public function registerTriggers()
   {
-    if ($trigger == TRIGGER_INIT_STREAM) {
-      $conf = array($this->connection->host, $this->client->user, self::XMPP_PROTOCOL_VERSION, self::XMPP_STREAM_NAMESPACE, self::XMPP_STREAM_NAMESPACE_STREAM);
-      $this->connection->send('<stream:stream to="%s" from="%s" version="%s" xmlns="%s" xmlns:stream="%s">', $conf);
-    }
+    $this->onTrigger(TRIGGER_INIT_STREAM, function(Connection $c) {
+      Logger::log('Starting stream');
+      $conf = array($c->host, $c->client->user, StreamHandler::XMPP_PROTOCOL_VERSION, StreamHandler::XMPP_STREAM_NAMESPACE, StreamHandler::XMPP_STREAM_NAMESPACE_STREAM);
+      $c->send('<stream:stream to="%s" from="%s" version="%s" xmlns="%s" xmlns:stream="%s">', $conf);
+    });
   }
 
-  /**
-   * @param string $event
-   */
-  public function onEvent($event)
+  public function registerEvents()
   {
-    $response   = $this->response;
-    $connection = $this->connection;
-    $socket     = $this->socket;
-    $client     = $this->client;
+    $this->on('stream:stream', function(Response $r, Connection $c) {
+      $c->set('sessionId', $r->get('stream:stream')->attr('id'));
+    });
 
-    switch($event) {
-      case 'stream:stream':
-        $this->sessionId = $response->get('stream:stream')->attr('id');
-        // initiating stream
-        // next: starttls
-        break;
+    $this->on('stream:features', function(Response $r, Connection $c) {
+      if ($c->get('waitForSASL') === true) {
+        // as we are waiting for the SASL auth, there MUST NOT be any starttls tag in stream:features
+        if (!$r->get('stream:features')->has('starttls')) {
+          if ($r->get('mechanisms')->attr('xmlns') == StreamHandler::XMPP_NAMESPACE_SASL) {
+            $c->set('waitForSASL', false);
 
-      case 'stream:features':
-        if ($this->waitForSASL) {
-          // as we are waiting for the SASL auth, there MUST NOT be any starttls tag in stream:features
-          if (!$response->get('stream:features')->has('starttls')) {
-           if ($response->get('mechanisms')->attr('xmlns') == self::XMPP_NAMESPACE_SASL) {
-              $this->waitForSASL = false;
+            $user = $c->client->user;
+            $pass = $c->client->pass;
 
-              $user = $client->user;
-              $pass = $client->pass;
-
-              if (empty($user)) {
-                $mechanism  = 'ANONYMOUS';
-                $authString = '';
-              } else {
-                $mechanism  = 'PLAIN';
-                $authString = base64_encode(chr(0).$user.chr(0).$pass);
-              }
-
-              $connection->send('<auth xmlns="%s" mechanism="%s">%s</auth>', array(self::XMPP_NAMESPACE_SASL, $mechanism, $authString));
-              $this->waitForAuthSuccess = true;
+            if (empty($user)) {
+              $mechanism  = 'ANONYMOUS';
+              $authString = '';
+            } else {
+              $mechanism  = 'PLAIN';
+              $authString = base64_encode(chr(0).$user.chr(0).$pass);
             }
-          }
-        } else {
-          $session = $response->get('session')->attr('xmlns');
 
-          if ($session == self::XMPP_NAMESPACE_SESSION) {
-            $this->hasSessionFeature = true;
+            $c->send('<auth xmlns="%s" mechanism="%s">%s</auth>', array(StreamHandler::XMPP_NAMESPACE_SASL, $mechanism, $authString));
+            $c->set('waitForAuthSuccess', true);
           }
         }
-        break;
+      } else {
+        $session = $r->get('session')->attr('xmlns');
 
-      case 'starttls':
-        $xmlns = $response->get('starttls')->attr('xmlns');
-
-        if ($xmlns == self::XMPP_NAMESPACE_TLS) {
-          $connection->send('<starttls xmlns="%s"/>', array(self::XMPP_NAMESPACE_TLS));
-          // next: proceed
+        if ($session == StreamHandler::XMPP_NAMESPACE_SESSION) {
+          $c->set('hasSessionFeature', true);
         }
-        break;
+      }
+    });
 
-      case 'proceed':
-        if ($response->get('proceed')->attr('xmlns') == self::XMPP_NAMESPACE_TLS) {
-          $socket->setCrypt(true);
-          // we MUST send a new stream without creating a new TCP connection
-          $this->trigger(TRIGGER_INIT_STREAM);
-          $this->waitForSASL = true;
-          // now we wait for the new stream response
-          // next: stream:features -> MUST NOT contain starttls tag!
+    $this->on('starttls', function(Response $r, Connection $c) {
+      $xmlns = $r->get('starttls')->attr('xmlns');
+
+      if ($xmlns == StreamHandler::XMPP_NAMESPACE_TLS) {
+        $c->send('<starttls xmlns="%s"/>', array(StreamHandler::XMPP_NAMESPACE_TLS));
+        // next: proceed
+      }
+    });
+
+    $this->on('proceed', function(Response $r, Connection $c) {
+      if ($r->get('proceed')->attr('xmlns') == StreamHandler::XMPP_NAMESPACE_TLS) {
+        $c->getSocket()->setCrypt(true);
+        // we MUST send a new stream without creating a new TCP connection
+        $c->trigger(TRIGGER_INIT_STREAM);
+        $c->set('waitForSASL', true);
+        // now we wait for the new stream response
+        // next: stream:features -> MUST NOT contain starttls tag!
+      }
+    });
+
+    $this->on('success', function(Response $r, Connection $c) {
+      if ($c->get('waitForAuthSuccess') === true) {
+        // we MUST send a new stream without creating a new TCP connection
+        $c->trigger(TRIGGER_INIT_STREAM);
+        $c->set('waitForAuthSuccess', false);
+      }
+    });
+
+    $this->on('failure', function(Response $r, Connection $c) {
+      if ($c->get('waitForAuthSuccess')) {
+        $c->set('waitForAuthSuccess', false);
+        Logger::err('Wrong user credentials!', true);
+      }
+    });
+
+    $this->on('bind', array($this, 'onBind'));
+  }
+
+  public function onBind(Response $r, Connection $c)
+  {
+    $onSessionStart = function(Response $r, Connection $c) {
+      if ($r->get('iq')->attr('type') == 'result') {
+        Logger::log('Session started');
+        $c->trigger(TRIGGER_ROSTER_GET);
+      }
+    };
+
+    $onIqSet = function(Response $r, Connection $c) use ($onSessionStart) {
+      if ($r->get('iq')->attr('type') == 'result') {
+        Logger::log('Successfully authed and connected');
+
+        $jid = $r->get('jid')->cdata;
+
+        $c->client->JID = $jid;
+        $c->client->authStatus = true;
+
+        if ($c->get('hasSessionFeature') === true) {
+          $c->send('<iq type="set"><session xmlns="%s"/></iq>', array(StreamHandler::XMPP_NAMESPACE_SESSION), true);
         }
-        break;
+      }
+    };
 
-      case 'success':
-        if ($this->waitForAuthSuccess) {
-          // we MUST send a new stream without creating a new TCP connection
-          $this->trigger(TRIGGER_INIT_STREAM);
-          $this->waitForAuthSuccess = false;
-        }
-        break;
+    if (!$r->get('bind')->has('jid') && $r->get('bind')->attr('xmlns') == StreamHandler::XMPP_NAMESPACE_BIND) {
+      $resource = $c->client->resource;
 
-      case 'failure':
-        if ($this->waitForAuthSuccess) {
-          $this->waitForAuthSuccess = false;
-          Logger::err('Wrong user credentials!', true);
-        }
-        break;
+      if (!empty($resource)) {
+        $binding = sprintf('<bind xmlns="%s"><resource>%s</resource></bind>', StreamHandler::XMPP_NAMESPACE_BIND, $resource);
+      } else {
+        $binding = sprintf('<bind xmlns="%s"/>', StreamHandler::XMPP_NAMESPACE_BIND);
+      }
 
-      case 'bind':
-        if (!$response->get('bind')->has('jid') && $response->get('bind')->attr('xmlns') == self::XMPP_NAMESPACE_BIND) {
-          $resource = $client->resource;
-          if (!empty($resource)) {
-            $binding = sprintf('<bind xmlns="%s"><resource>%s</resource></bind>', self::XMPP_NAMESPACE_BIND, $resource);
-          } else {
-            $binding = sprintf('<bind xmlns="%s"/>', self::XMPP_NAMESPACE_BIND);
-          }
-
-          $hasSessionFeature = $this->hasSessionFeature;
-
-          $connection
-            ->send('<iq type="set">%s</iq>', array($binding), true)
-            ->onResponse(function($h) use ($hasSessionFeature) {
-              if ($h->response->get('iq')->attr('type') == 'result') {
-                Logger::log('Successfully authed and connected');
-
-                $jid = $h->response->get('jid')->cdata;
-
-                $h->client->JID = $jid;
-                $h->client->authStatus = true;
-
-                if ($hasSessionFeature) {
-                  $h->connection
-                    ->send('<iq type="set"><session xmlns="%s"/></iq>', array(self::XMPP_NAMESPACE_SESSION), true)
-                    ->onResponse(function($h) {
-                      if ($h->response->get('iq')->attr('type') == 'result') {
-                        Logger::log('Session started');
-                        $h->trigger(TRIGGER_ROSTER_GET);
-                      }
-                    });
-                }
-              }
-          });
-        }
-        break;
-
-//      case 'custom_bind_event':
-//        if ($response->get('iq')->attr('type') == 'result') {
-//          Logger::log('Successfully authed and connected');
-//
-//          $jid = $response->get('jid')->cdata;
-//
-//          $client->JID = $jid;
-//          $client->authStatus =true;
-//
-//          if ($this->hasSessionFeature) {
-//            $id = $connection->UID();
-//            $connection->send('<iq id="%s" type="set"><session xmlns="%s"/></iq>', array($id, self::XMPP_NAMESPACE_SESSION));
-//            $connection->addIdHandler($id, 'session_started', $this);
-//          }
-//        }
-//        break;
-//      case 'session_started':
-//        if ($response->get('iq')->attr('type') == 'result') {
-//          Logger::log('Session started');
-//          $this->trigger(TRIGGER_ROSTER_GET);
-//        }
-//        break;
+      $c->send('<iq type="set">%s</iq>', array($binding), true)
+        ->onResponse($onIqSet)
+        ->onResponse($onSessionStart);
     }
   }
 }

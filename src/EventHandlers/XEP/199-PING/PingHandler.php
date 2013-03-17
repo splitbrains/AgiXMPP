@@ -7,8 +7,9 @@
  */
 namespace XMPP\EventHandlers;
 
-use XMPP\Handler;
-use XMPP\EventHandlers\EventReceiver;
+use XMPP\Connection;
+use XMPP\EventHandlers\EventHandler;
+use XMPP\Response;
 
 /**
  * Handler for XEP-0199 (XMPP Ping)
@@ -17,33 +18,24 @@ use XMPP\EventHandlers\EventReceiver;
  * Class PingHandler
  * @package XMPP\EventHandlers
  */
-class PingHandler extends EventReceiver
+class PingHandler extends EventHandler
 {
   const XMPP_NAMESPACE_PING = 'urn:xmpp:ping';
 
-  /**
-   * @param string $event
-   */
-  public function onEvent($event)
+  public function registerTriggers()
   {
-    $response = $this->response;
-
-    if ($event == 'iq' && $response->get('ping') && $response->get('ping')->attr('xmlns') == self::XMPP_NAMESPACE_PING) {
-      $id = $response->get('iq')->attr('id');
-      $from = $response->get('iq')->attr('from');
-
-      $this->connection
-        ->send('<iq type="result" id="%s" to="%s" />', array($id, $from), true)
-        ->onResponse(function($event) {
-          var_dump($event);
-        });
-    }
+    return;
   }
 
-  /**
-   * @param string $trigger
-   */
-  public function onTrigger($trigger)
+  public function registerEvents()
   {
+    $this->on('iq', function(Response $r, Connection $c) {
+      if ($r->get('ping') && $r->get('ping')->attr('xmlns') == PingHandler::XMPP_NAMESPACE_PING) {
+        $id = $r->get('iq')->attr('id');
+        $from = $r->get('iq')->attr('from');
+
+        $c->send('<iq type="result" id="%s" to="%s" />', array($id, $from));
+      }
+    });
   }
 }

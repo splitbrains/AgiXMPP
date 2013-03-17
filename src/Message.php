@@ -8,16 +8,16 @@
 namespace XMPP;
 
 use XMPP\XML\Parser;
-use XMPP\EventHandlers\EventReceiver;
+use XMPP\EventHandlers\EventHandler;
 
 use SimpleXMLElement;
 
-class Message extends EventReceiver
+class Message extends EventHandler
 {
   /**
-   * @var callable
+   * @var string
    */
-  private $callback;
+  private $eventTag;
 
   /**
    * @param $message
@@ -32,44 +32,40 @@ class Message extends EventReceiver
 
       if (!isset($xml->attributes()->id)) {
         $this->uid = $connection->UID();
+        $this->eventTag = $xml->getName();
 
         $xml->addAttribute('id', $this->uid);
         $message = trim(preg_replace(Parser::XML_DECL_REGEX, '', $xml->asXML()));
       }
-      $connection->addEventHandler(array($xml->getName()), $this);
+      $connection->addEventHandler($this);
     }
     $connection->getSocket()->write($message);
   }
 
   /**
    * @param callable $callback
+   * @return $this
    */
   public function onResponse($callback)
   {
-    $this->callback = $callback;
-  }
-
-  /**
-   * @param string $event
-   */
-  public function onEvent($event)
-  {
-    if ($this->response->get($event)->attr('id') == $this->uid) {
-      $cb = $this->callback;
-
-      if ($cb instanceof EventReceiver) {
-        $cb->onEvent($event);
-      } elseif (is_callable($cb)) {
-        $cb($this);
+    $uid = $this->uid;
+    $eventTag = $this->eventTag;
+    $this->on($eventTag, function(Response $r, Connection $c) use ($eventTag, $callback, $uid) {
+      if ($r->getByAttr('id', $uid)) {
+        $c->invokeEvent($callback, array($r, $c));
       }
-    }
+    });
+
+    return $this;
   }
 
-  /**
-   * @param string $trigger
-   */
-  public function onTrigger($trigger)
+  public function registerTriggers()
   {
-    // TODO: Implement onTrigger() method.
+    return;
+  }
+
+  public function registerEvents()
+  {
+    return;
   }
 }

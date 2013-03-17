@@ -7,10 +7,11 @@
  */
 namespace XMPP\EventHandlers;
 
-use XMPP\Handler;
-use XMPP\EventHandlers\EventReceiver;
+use XMPP\Connection;
+use XMPP\EventHandlers\EventHandler;
+use XMPP\Response;
 
-class PresenceHandler extends EventReceiver
+class PresenceHandler extends EventHandler
 {
   const SHOW_STATUS_AWAY = 'away';
   const SHOW_STATUS_CHAT = 'chat';
@@ -33,55 +34,45 @@ class PresenceHandler extends EventReceiver
     );
   }
 
-  /**
-   * @param string $event
-   */
-  public function onTrigger($event)
+  public function registerTriggers()
   {
-    switch($event) {
-      case TRIGGER_PRESENCE_INIT:
-        // show initial presence
+    $this->onTrigger(TRIGGER_PRESENCE_INIT, function(Connection $c) {
+      $client = $c->client;
+      // show initial presence
 
-        $status = $this->client->status;
-        $priority = $this->client->priority;
-        $availability = $this->client->availability;
+      $status = $client->status;
+      $priority = $client->priority;
+      $availability = $client->availability;
 
-        $stanzaShow = '';
-        $stanzaStatus = '';
-        $stanzaPriority = '';
+      $stanzaShow = '';
+      $stanzaStatus = '';
+      $stanzaPriority = '';
 
-        if (!empty($availability) && in_array($availability, self::getAvailabilities())) {
-          $stanzaShow = sprintf('<show>%s</show>', $availability);
-        }
-        if (!empty($status)) {
-          $stanzaStatus = sprintf('<status>%s</status>', $status);
-        }
-        if (is_numeric($priority) && $priority > -128 && $priority < 127) {
-          $stanzaPriority = sprintf('<priority>%d</priority>', (int)$priority);
-        }
+      if (!empty($availability) && in_array($availability, PresenceHandler::getAvailabilities())) {
+        $stanzaShow = sprintf('<show>%s</show>', $availability);
+      }
+      if (!empty($status)) {
+        $stanzaStatus = sprintf('<status>%s</status>', $status);
+      }
+      if (is_numeric($priority) && $priority > -128 && $priority < 127) {
+        $stanzaPriority = sprintf('<priority>%d</priority>', (int)$priority);
+      }
 
-        $this->connection->send('<presence from="%s">%s%s%s</presence>', array($this->client->JID, $stanzaShow, $stanzaStatus, $stanzaPriority));
-        break;
-    }
+      $c->send('<presence from="%s">%s%s%s</presence>', array($client->JID, $stanzaShow, $stanzaStatus, $stanzaPriority));
+    });
   }
 
-  /**
-   * @param string $event
-   */
-  public function onEvent($event)
+  public function registerEvents()
   {
-    $response = $this->response;
+    $this->on('presence', function(Response $r, Connection $c) {
+      if ($r->get('presence')->attr('to') == $c->client->JID) {
+        $from = $r->get('presence')->attr('from');
 
-    if ($event == 'presence' && $response->get('presence')->attr('to') == $this->client->JID) {
-      $from = $response->get('presence')->attr('from');
-
-      $presence = array();
-      $presence['type'] = $response->get('presence')->attr('type');
-      $presence['show'] = $response->get('show')->cdata();
-      $presence['status'] = $response->get('status')->cdata();
-
-      $this->presences[$from] = $presence;
-    }
+        $presence = array();
+        $presence['type'] = $r->get('presence')->attr('type');
+        $presence['show'] = $r->get('show')->cdata();
+        $presence['status'] = $r->get('status')->cdata();
+      }
+    });
   }
-
 }
