@@ -283,7 +283,7 @@ class Connection
    * @param $key
    * @param $val
    */
-  public function set($key, $val)
+  public function store($key, $val)
   {
     $this->store[$key] = $val;
   }
@@ -292,7 +292,7 @@ class Connection
    * @param $key
    * @return mixed
    */
-  public function get($key)
+  public function fetch($key)
   {
     if (isset($this->store[$key])) {
       return $this->store[$key];

@@ -38,15 +38,15 @@ class StreamHandler extends EventHandler
   public function registerEvents()
   {
     $this->on('stream:stream', function(Response $r, Connection $c) {
-      $c->set('sessionId', $r->get('stream:stream')->attr('id'));
+      $c->store('sessionId', $r->get('stream:stream')->attr('id'));
     });
 
     $this->on('stream:features', function(Response $r, Connection $c) {
-      if ($c->get('waitForSASL') === true) {
+      if ($c->fetch('waitForSASL') === true) {
         // as we are waiting for the SASL auth, there MUST NOT be any starttls tag in stream:features
         if (!$r->get('stream:features')->has('starttls')) {
           if ($r->get('mechanisms')->attr('xmlns') == StreamHandler::XMPP_NAMESPACE_SASL) {
-            $c->set('waitForSASL', false);
+            $c->store('waitForSASL', false);
 
             $user = $c->client->user;
             $pass = $c->client->pass;
@@ -60,14 +60,14 @@ class StreamHandler extends EventHandler
             }
 
             $c->send('<auth xmlns="%s" mechanism="%s">%s</auth>', array(StreamHandler::XMPP_NAMESPACE_SASL, $mechanism, $authString));
-            $c->set('waitForAuthSuccess', true);
+            $c->store('waitForAuthSuccess', true);
           }
         }
       } else {
         $session = $r->get('session')->attr('xmlns');
 
         if ($session == StreamHandler::XMPP_NAMESPACE_SESSION) {
-          $c->set('hasSessionFeature', true);
+          $c->store('hasSessionFeature', true);
         }
       }
     });
@@ -86,23 +86,23 @@ class StreamHandler extends EventHandler
         $c->getSocket()->setCrypt(true);
         // we MUST send a new stream without creating a new TCP connection
         $c->trigger(TRIGGER_INIT_STREAM);
-        $c->set('waitForSASL', true);
+        $c->store('waitForSASL', true);
         // now we wait for the new stream response
         // next: stream:features -> MUST NOT contain starttls tag!
       }
     });
 
     $this->on('success', function(Response $r, Connection $c) {
-      if ($c->get('waitForAuthSuccess') === true) {
+      if ($c->fetch('waitForAuthSuccess') === true) {
         // we MUST send a new stream without creating a new TCP connection
         $c->trigger(TRIGGER_INIT_STREAM);
-        $c->set('waitForAuthSuccess', false);
+        $c->store('waitForAuthSuccess', false);
       }
     });
 
     $this->on('failure', function(Response $r, Connection $c) {
-      if ($c->get('waitForAuthSuccess')) {
-        $c->set('waitForAuthSuccess', false);
+      if ($c->fetch('waitForAuthSuccess')) {
+        $c->store('waitForAuthSuccess', false);
         Logger::err('Wrong user credentials!', true);
       }
     });
@@ -128,7 +128,7 @@ class StreamHandler extends EventHandler
         $c->client->JID = $jid;
         $c->client->authStatus = true;
 
-        if ($c->get('hasSessionFeature') === true) {
+        if ($c->fetch('hasSessionFeature') === true) {
           $c->send('<iq type="set"><session xmlns="%s"/></iq>', array(StreamHandler::XMPP_NAMESPACE_SESSION), true);
         }
       }
