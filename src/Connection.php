@@ -5,20 +5,21 @@
  * @internal UTF-Chars: ÄÖÜäöüß∆
  * created on 29.11.11 21:15.
  */
-namespace XMPP;
+namespace AgiXMPP;
 
-use XMPP\Client;
-use XMPP\Socket;
-use XMPP\Logger;
-use XMPP\Response;
-use XMPP\EventHandlers\EventHandler;
-use XMPP\XML\Parser;
+use AgiXMPP\Client;
+use AgiXMPP\Socket;
+use AgiXMPP\Logger;
+use AgiXMPP\Response;
+use AgiXMPP\EventHandlers\EventHandler;
+use AgiXMPP\XML\Parser;
 
 // default handlers which are registered in registerDefaultHandlers()
-use XMPP\EventHandlers\StreamHandler;
-use XMPP\EventHandlers\PingHandler;
-use XMPP\EventHandlers\RosterHandler;
-use XMPP\EventHandlers\PresenceHandler;
+use AgiXMPP\EventHandlers\Core\StreamHandler;
+use AgiXMPP\EventHandlers\XEP\PING_199\PingHandler;
+use AgiXMPP\EventHandlers\IM\RosterHandler;
+use AgiXMPP\EventHandlers\IM\PresenceHandler;
+use AgiXMPP\EventHandlers\EventTrigger;
 
 class Connection
 {
@@ -33,22 +34,22 @@ class Connection
   public $port;
 
   /**
-   * @var \XMPP\Client
+   * @var \AgiXMPP\Client
    */
   public $client;
 
   /**
-   * @var \XMPP\Socket The basic socket stream
+   * @var \AgiXMPP\Socket The basic socket stream
    */
   private $socket;
 
   /**
-   * @var \XMPP\XML\Parser
+   * @var \AgiXMPP\XML\Parser
    */
   private $xmlParser;
 
   /**
-   * @var \XMPP\EventHandlers\EventHandler[]
+   * @var \AgiXMPP\EventHandlers\EventHandler[]
    */
   private $eventHandlers = array();
 
@@ -89,11 +90,11 @@ class Connection
    */
   public function connect()
   {
-    $conn = $this->socket->open('tcp', $this->host, $this->port);
+    $conn = $this->socket->open('tcp', $this->host, $this->port, true);
     Logger::log('Attempting to connect to '.$this->host.':'.$this->port.'.');
 
     if ($conn) {
-      $this->trigger(TRIGGER_INIT_STREAM);
+      $this->trigger(EventTrigger::INIT_STREAM);
       return true;
     }
     Logger::err('Could not connect to host.', true);
@@ -191,7 +192,7 @@ class Connection
    * @param string $data
    * @param array $args
    * @param bool $awaitsResponse
-   * @return \XMPP\Message
+   * @return \AgiXMPP\Message
    */
   public function send($data, $args = array(), $awaitsResponse = false)
   {
@@ -230,7 +231,7 @@ class Connection
   }
 
   /**
-   * @param \XMPP\Response $response
+   * @param \AgiXMPP\Response $response
    */
   private function handleEvents(Response $response)
   {
@@ -272,7 +273,7 @@ class Connection
   }
 
   /**
-   * @return \XMPP\Socket
+   * @return \AgiXMPP\Socket
    */
   public function getSocket()
   {

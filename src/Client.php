@@ -1,5 +1,5 @@
 <?php
-namespace XMPP;
+namespace AgiXMPP;
 
 class Client
 {
@@ -44,13 +44,13 @@ class Client
   public $authStatus = false;
 
   /**
-   * @var \XMPP\Connection
+   * @var \AgiXMPP\Connection
    */
   private $connection;
 
   /**
    * @param array $config
-   * @return \XMPP\Client
+   * @return \AgiXMPP\Client
    */
   public function __construct(array $config)
   {

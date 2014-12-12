@@ -5,31 +5,31 @@
  * @internal UTF-Chars: ÄÖÜäöüß∆
  * created on 11.01.12 14:19.
  */
-namespace XMPP\EventHandlers;
+namespace AgiXMPP\EventHandlers;
 
-use XMPP\Client;
-use XMPP\Connection;
-use XMPP\Response;
+use AgiXMPP\Client;
+use AgiXMPP\Connection;
+use AgiXMPP\Response;
 
 abstract class EventHandler
 {
   /**
-   * @var \XMPP\Response
+   * @var \AgiXMPP\Response
    */
   public $response;
 
   /**
-   * @var \XMPP\Connection
+   * @var \AgiXMPP\Connection
    */
   public $connection;
 
   /**
-   * @var \XMPP\Socket
+   * @var \AgiXMPP\Socket
    */
   public $socket;
 
   /**
-   * @var \XMPP\Client
+   * @var \AgiXMPP\Client
    */
   public $client;
 

@@ -5,12 +5,12 @@
  * @internal UTF-Chars: ÄÖÜäöüß∆
  * created on 18.01.12 11:31.
  */
-namespace XMPP;
+namespace AgiXMPP;
 
 use RecursiveArrayIterator;
 use RecursiveIteratorIterator;
 
-use XMPP\XML\Node;
+use AgiXMPP\XML\Node;
 
 class Response
 {
@@ -35,7 +35,7 @@ class Response
 
   /**
    * @param $tag
-   * @return \XMPP\XML\Node
+   * @return \AgiXMPP\XML\Node
    */
   public function get($tag)
   {
@@ -87,7 +87,7 @@ class Response
    */
   public function getByAttr($attr, $val)
   {
-    /** @var \XMPP\XML\Node $node */
+    /** @var \AgiXMPP\XML\Node $node */
     foreach($this->iterator as $key => $node) {
       if ($node instanceof Node || is_numeric($key)) {
         if ($node->attr($attr) === $val) {
@@ -99,7 +99,7 @@ class Response
   }
 
   /**
-   * @return \XMPP\XML\Node
+   * @return \AgiXMPP\XML\Node
    */
   public function getRoot()
   {

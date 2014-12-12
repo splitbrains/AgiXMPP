@@ -5,15 +5,15 @@
  * @internal UTF-Chars: ÄÖÜäöüß∆
  * created on 07.01.12 15:59.
  */
-namespace XMPP\EventHandlers;
+namespace AgiXMPP\EventHandlers\XEP\PING_199;
 
-use XMPP\Connection;
-use XMPP\EventHandlers\EventHandler;
-use XMPP\Response;
+use AgiXMPP\Connection;
+use AgiXMPP\EventHandlers\EventHandler;
+use AgiXMPP\Response;
 
 /**
  * Handler for XEP-0199 (XMPP Ping)
- * See http://xmpp.org/extensions/xep-0030.html
+ * See http://xmpp.org/extensions/xep-0199.html
  *
  * Class PingHandler
  * @package XMPP\EventHandlers

@@ -5,11 +5,12 @@
  * @internal UTF-Chars: ÄÖÜäöüß∆
  * created on 11.01.12 14:19.
  */
-namespace XMPP\EventHandlers;
+namespace AgiXMPP\EventHandlers\IM;
 
-use XMPP\Connection;
-use XMPP\EventHandlers\EventHandler;
-use XMPP\Response;
+use AgiXMPP\Connection;
+use AgiXMPP\EventHandlers\EventHandler;
+use AgiXMPP\EventHandlers\EventTrigger;
+use AgiXMPP\Response;
 
 class PresenceHandler extends EventHandler
 {
@@ -36,7 +37,7 @@ class PresenceHandler extends EventHandler
 
   public function registerTriggers()
   {
-    $this->onTrigger(TRIGGER_PRESENCE_INIT, function(Connection $c) {
+    $this->onTrigger(EventTrigger::PRESENCE_INIT, function(Connection $c) {
       $client = $c->client;
       // show initial presence
 

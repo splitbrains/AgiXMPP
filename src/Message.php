@@ -5,10 +5,10 @@
  * @internal UTF-Chars: ÄÖÜäöüß∆
  * created on 15.03.13 13:23.
  */
-namespace XMPP;
+namespace AgiXMPP;
 
-use XMPP\XML\Parser;
-use XMPP\EventHandlers\EventHandler;
+use AgiXMPP\XML\Parser;
+use AgiXMPP\EventHandlers\EventHandler;
 
 use SimpleXMLElement;
 
@@ -21,7 +21,7 @@ class Message extends EventHandler
 
   /**
    * @param $message
-   * @param \XMPP\Connection $connection
+   * @param \AgiXMPP\Connection $connection
    * @param $awaitsResponse
    */
   public function __construct($message, Connection $connection, $awaitsResponse)

@@ -1,5 +1,5 @@
 <?php
-use XMPP\EventHandlers\PresenceHandler;
+use AgiXMPP\EventHandlers\IM\PresenceHandler;
 
 return array(
   'host' => 'jabber.net',

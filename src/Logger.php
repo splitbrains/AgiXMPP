@@ -1,5 +1,5 @@
 <?php
-namespace XMPP;
+namespace AgiXMPP;
 
 class Logger
 {

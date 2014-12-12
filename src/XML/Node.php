@@ -5,9 +5,9 @@
  * @internal UTF-Chars: ÄÖÜäöüß∆
  * created on 13.01.12 16:40.
  */
-namespace XMPP\XML;
+namespace AgiXMPP\XML;
 
-use XMPP\Response;
+use AgiXMPP\Response;
 
 class Node
 {

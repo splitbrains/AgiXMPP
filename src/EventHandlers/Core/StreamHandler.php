@@ -5,12 +5,13 @@
  * @internal UTF-Chars: ÄÖÜäöüß∆
  * created on 09.01.12 17:06.
  */
-namespace XMPP\EventHandlers;
+namespace AgiXMPP\EventHandlers\Core;
 
-use XMPP\Connection;
-use XMPP\EventHandlers\EventHandler;
-use XMPP\Logger;
-use XMPP\Response;
+use AgiXMPP\Connection;
+use AgiXMPP\EventHandlers\EventHandler;
+use AgiXMPP\Logger;
+use AgiXMPP\Response;
+use AgiXMPP\EventHandlers\EventTrigger;
 
 class StreamHandler extends EventHandler
 {
@@ -28,7 +29,7 @@ class StreamHandler extends EventHandler
 
   public function registerTriggers()
   {
-    $this->onTrigger(TRIGGER_INIT_STREAM, function(Connection $c) {
+    $this->onTrigger(EventTrigger::INIT_STREAM, function(Connection $c) {
       Logger::log('Starting stream');
       $conf = array($c->host, $c->client->user, StreamHandler::XMPP_PROTOCOL_VERSION, StreamHandler::XMPP_STREAM_NAMESPACE, StreamHandler::XMPP_STREAM_NAMESPACE_STREAM);
       $c->send('<stream:stream to="%s" from="%s" version="%s" xmlns="%s" xmlns:stream="%s">', $conf);
@@ -42,7 +43,8 @@ class StreamHandler extends EventHandler
     });
 
     $this->on('stream:features', function(Response $r, Connection $c) {
-      if ($c->fetch('waitForSASL') === true) {
+      if ($c->fetch('waitForSASL') === true || $c->fetch('initialFeatures') == null) {
+        $c->store('initialFeatures', true);
         // as we are waiting for the SASL auth, there MUST NOT be any starttls tag in stream:features
         if (!$r->get('stream:features')->has('starttls')) {
           if ($r->get('mechanisms')->attr('xmlns') == StreamHandler::XMPP_NAMESPACE_SASL) {
@@ -63,12 +65,12 @@ class StreamHandler extends EventHandler
             $c->store('waitForAuthSuccess', true);
           }
         }
-      } else {
-        $session = $r->get('session')->attr('xmlns');
+      }
+    });
 
-        if ($session == StreamHandler::XMPP_NAMESPACE_SESSION) {
-          $c->store('hasSessionFeature', true);
-        }
+    $this->on('session', function(Response $r, Connection $c) {
+      if ($r->getByAttr('xmlns', StreamHandler::XMPP_NAMESPACE_SESSION)) {
+        $c->store('hasSessionFeature', true);
       }
     });
 
@@ -85,7 +87,7 @@ class StreamHandler extends EventHandler
       if ($r->get('proceed')->attr('xmlns') == StreamHandler::XMPP_NAMESPACE_TLS) {
         $c->getSocket()->setCrypt(true);
         // we MUST send a new stream without creating a new TCP connection
-        $c->trigger(TRIGGER_INIT_STREAM);
+        $c->trigger(EventTrigger::INIT_STREAM);
         $c->store('waitForSASL', true);
         // now we wait for the new stream response
         // next: stream:features -> MUST NOT contain starttls tag!
@@ -95,7 +97,7 @@ class StreamHandler extends EventHandler
     $this->on('success', function(Response $r, Connection $c) {
       if ($c->fetch('waitForAuthSuccess') === true) {
         // we MUST send a new stream without creating a new TCP connection
-        $c->trigger(TRIGGER_INIT_STREAM);
+        $c->trigger(EventTrigger::INIT_STREAM);
         $c->store('waitForAuthSuccess', false);
       }
     });
@@ -115,7 +117,7 @@ class StreamHandler extends EventHandler
     $onSessionStart = function(Response $r, Connection $c) {
       if ($r->get('iq')->attr('type') == 'result') {
         Logger::log('Session started');
-        $c->trigger(TRIGGER_ROSTER_GET);
+        $c->trigger(EventTrigger::ROSTER_GET);
       }
     };
 

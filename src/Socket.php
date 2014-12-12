@@ -1,7 +1,7 @@
 <?php
-namespace XMPP;
+namespace AgiXMPP;
 
-use XMPP\Logger;
+use AgiXMPP\Logger;
 
 class Socket
 {
@@ -35,7 +35,7 @@ class Socket
     $this->socket = stream_socket_client(sprintf('%s://%s:%d', $protocol, $host, $port), $errno, $errstr, self::TIMEOUT, $flags);
 
     if ($this->socket) {
-      stream_set_timeout($this->socket, self::TIMEOUT);
+//      stream_set_timeout($this->socket, self::TIMEOUT);
       stream_set_blocking($this->socket, 1);
       $this->connected = true;
 

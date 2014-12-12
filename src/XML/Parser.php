@@ -5,9 +5,9 @@
  * @internal UTF-Chars: ÄÖÜäöüß∆
  * created on 13.01.12 10:59.
  */
-namespace XMPP\XML;
+namespace AgiXMPP\XML;
 
-use XMPP\XML\Node;
+use AgiXMPP\XML\Node;
 
 class Parser
 {
@@ -31,7 +31,7 @@ class Parser
    */
   protected $parser;
   /**
-   * @var \XMPP\XML\Node;
+   * @var \AgiXMPP\XML\Node;
    */
   protected $rootNode = null;
 
@@ -133,7 +133,7 @@ class Parser
   /**
    * @param int $offset
    *
-   * @return \XMPP\XML\Node
+   * @return \AgiXMPP\XML\Node
    */
   protected function getNode($offset = 0)
   {
