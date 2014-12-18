@@ -12,6 +12,19 @@ use AgiXMPP\EventHandlers\EventHandler;
 
 use SimpleXMLElement;
 
+/**
+ * This class extends from EventHandler so that we can use the power of the event handling system.
+ * This is particulary useful if you expect an answer from a message you just sent.
+ * Simple example:
+ *
+ * $connection
+ *   ->send('<iq type="set">something</iq>')
+ *   ->onResponse(function($response, $connection) { ... });
+ *
+ * The message will automatically wrap it with an ID and when the server responds,
+ * the registered callback will be called.
+ * @package AgiXMPP
+ */
 class Message extends EventHandler
 {
   /**
