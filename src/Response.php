@@ -20,17 +20,20 @@ class Response
   protected $iterator;
 
   /**
-   * @var array
+   * @var Node[]
    */
-  private $plain;
+  private $nodes;
 
   /**
    * @param array $nodes
    */
   public function __construct($nodes = array())
   {
-    $this->plain = $nodes;
-    $this->iterator = new RecursiveIteratorIterator(new RecursiveArrayIterator($nodes), RecursiveIteratorIterator::SELF_FIRST);
+    $this->nodes = $nodes;
+
+    $this->iterator = new RecursiveIteratorIterator(
+      new RecursiveArrayIterator($nodes), RecursiveIteratorIterator::SELF_FIRST
+    );
   }
 
   /**
@@ -39,11 +42,9 @@ class Response
    */
   public function get($tag)
   {
-    foreach($this->iterator as $key => $node) {
-      if ($node instanceof Node || is_numeric($key)) {
-        if ($node->tag === $tag) {
-          return $node;
-        }
+    foreach($this->iterator as $node) {
+      if ($node instanceof Node && $node->tag === $tag) {
+        return $node;
       }
     }
     return new Node();
@@ -51,11 +52,9 @@ class Response
 
   public function has($tag)
   {
-    foreach($this->iterator as $key => $node) {
-      if ($node instanceof Node || is_numeric($key)) {
-        if ($node->tag === $tag) {
-          return true;
-        }
+    foreach($this->iterator as $node) {
+      if ($node instanceof Node && $node->tag === $tag) {
+        return true;
       }
     }
     return false;
@@ -69,11 +68,9 @@ class Response
   {
     $ret = array();
 
-    foreach($this->iterator as $key => $node) {
-      if ($node instanceof Node || is_numeric($key)) {
-        if ($node->tag === $tag) {
-          $ret[] = $node;
-        }
+    foreach($this->iterator as $node) {
+      if ($node instanceof Node && $node->tag === $tag) {
+        $ret[] = $node;
       }
     }
     return $ret;
@@ -88,11 +85,9 @@ class Response
   public function getByAttr($attr, $val)
   {
     /** @var \AgiXMPP\XML\Node $node */
-    foreach($this->iterator as $key => $node) {
-      if ($node instanceof Node || is_numeric($key)) {
-        if ($node->attr($attr) === $val) {
-          return true;
-        }
+    foreach($this->iterator as $node) {
+      if ($node instanceof Node && $node->attr($attr) === $val) {
+        return true;
       }
     }
     return false;

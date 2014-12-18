@@ -14,22 +14,22 @@ class Parser
   /**
    * @var int
    */
-  protected $depth = 0;
+  private $depth = 0;
 
   /**
    * @var array
    */
-  protected $tree = array();
+  private $tree = array();
 
   /**
    * @var string
    */
-  protected $root  = '';
+  private $root  = '';
 
   /**
    * @var \resource
    */
-  protected $parser;
+  private $parser;
   /**
    * @var \AgiXMPP\XML\Node;
    */
@@ -71,31 +71,6 @@ class Parser
     // at least the second level has to be closed; that ensures that all information is gathered
     $tagClosed = isset($this->tree[2]) ? $this->tree[2]->tag_closed : true;
     return count($this->tree) > 0 && $tagClosed;
-  }
-
-  /**
-   * Rather clunky solution to determine if the XML string is completed
-   * Had this effect every time at the openfire server
-   *
-   * @param $string
-   * @return bool|string
-   */
-  protected function fullString($string)
-  {
-    static $unclosedTags = 0, $fullString = '';
-
-    $tagOpenCount = substr_count($string, '<');
-    $tagCloseCount = substr_count($string, '>');
-
-    if ($tagOpenCount + $unclosedTags != $tagCloseCount) {
-      $fullString .= $string;
-      $unclosedTags += $tagOpenCount - $tagCloseCount;
-      return false;
-    }
-    $str = $fullString.$string;
-    $unclosedTags = 0;
-    $fullString = '';
-    return $str;
   }
 
   /**
