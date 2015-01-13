@@ -64,7 +64,7 @@ class Message extends EventHandler
     $uid = $this->uid;
     $eventTag = $this->eventTag;
     $this->on($eventTag, function(Response $r, Connection $c) use ($eventTag, $callback, $uid) {
-      if ($r->getByAttr('id', $uid)) {
+      if ($r->hasAttributeValue('id', $uid)) {
         $c->invokeEvent($callback, array($r, $c));
       }
     });
