@@ -69,7 +69,7 @@ class StreamHandler extends EventHandler
     });
 
     $this->on('session', function(Response $r, Connection $c) {
-      if ($r->getByAttr('xmlns', StreamHandler::XMPP_NAMESPACE_SESSION)) {
+      if ($r->hasAttributeValue('xmlns', StreamHandler::XMPP_NAMESPACE_SESSION)) {
         $c->store('hasSessionFeature', true);
       }
     });
@@ -131,7 +131,8 @@ class StreamHandler extends EventHandler
         $c->client->authStatus = true;
 
         if ($c->fetch('hasSessionFeature') === true) {
-          $c->send('<iq type="set"><session xmlns="%s"/></iq>', array(StreamHandler::XMPP_NAMESPACE_SESSION), true);
+          $c->send('<iq type="set"><session xmlns="%s"/></iq>', array(StreamHandler::XMPP_NAMESPACE_SESSION), true)
+            ->onResponse($onSessionStart);
         }
       }
     };
@@ -146,8 +147,7 @@ class StreamHandler extends EventHandler
       }
 
       $c->send('<iq type="set">%s</iq>', array($binding), true)
-        ->onResponse($onIqSet)
-        ->onResponse($onSessionStart);
+        ->onResponse($onIqSet);
     }
   }
 }
