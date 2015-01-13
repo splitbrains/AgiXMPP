@@ -150,7 +150,7 @@ class Connection
   /**
    * @return bool
    */
-  protected function receive()
+  private function receive()
   {
     $buffer = $this->isEnclosedBuffer($this->socket->read());
 
@@ -170,7 +170,7 @@ class Connection
    * @param $buffer
    * @return bool|string
    */
-  protected function isEnclosedBuffer($buffer)
+  private function isEnclosedBuffer($buffer)
   {
     static $unclosedTags = 0, $fullBuffer = '';
 

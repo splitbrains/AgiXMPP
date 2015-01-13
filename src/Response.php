@@ -17,7 +17,7 @@ class Response
   /**
    * @var RecursiveIteratorIterator
    */
-  protected $iterator;
+  private $iterator;
 
   /**
    * @var Node[]

@@ -19,7 +19,7 @@ class PresenceHandler extends EventHandler
   const SHOW_STATUS_DND  = 'dnd';
   const SHOW_STATUS_XA   = 'xa';
 
-  protected $presences = array();
+  private $presences = array();
 
   public static function getPresences()
   {

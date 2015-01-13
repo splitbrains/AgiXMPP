@@ -33,7 +33,7 @@ class Parser
   /**
    * @var \AgiXMPP\XML\Node;
    */
-  protected $rootNode = null;
+  private $rootNode = null;
 
   const XML_DECL_REGEX = '/<\?xml.*?[^?>]\?>/i';
 
@@ -77,7 +77,7 @@ class Parser
    * @param string $string
    * @return int
    */
-  protected function parse($string)
+  private function parse($string)
   {
     return xml_parse($this->parser, $string);
   }
@@ -100,7 +100,7 @@ class Parser
   /**
    * @param Node $node
    */
-  protected function setNode(Node $node)
+  private function setNode(Node $node)
   {
     $this->tree[$this->depth] = $node;
   }
@@ -110,7 +110,7 @@ class Parser
    *
    * @return \AgiXMPP\XML\Node
    */
-  protected function getNode($offset = 0)
+  private function getNode($offset = 0)
   {
     if (isset($this->tree[$this->depth + $offset])) {
       return $this->tree[$this->depth + $offset];
@@ -120,7 +120,7 @@ class Parser
   /**
    * @param $depth
    */
-  protected function unsetNode($depth)
+  private function unsetNode($depth)
   {
     unset($this->tree[$depth]);
   }
@@ -138,7 +138,7 @@ class Parser
    * @param string $tag
    * @param array $attrs
    */
-  protected function tag_open($parser, $tag, $attrs)
+  private function tag_open($parser, $tag, $attrs)
   {
     $this->depth++;
 
@@ -163,7 +163,7 @@ class Parser
    * @param \resource $parser
    * @param string $tag
    */
-  protected function tag_close($parser, $tag)
+  private function tag_close($parser, $tag)
   {
     $node = $this->getNode();
     $node->tag_closed = true;
@@ -184,7 +184,7 @@ class Parser
    * @param \resource $parser
    * @param string $cdata
    */
-  protected function cdata($parser, $cdata)
+  private function cdata($parser, $cdata)
   {
     $this->getNode()->cdata .= $cdata;
   }

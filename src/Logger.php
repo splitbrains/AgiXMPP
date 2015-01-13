@@ -25,7 +25,7 @@ class Logger
     }
   }
 
-  protected static function write($completeMsg)
+  private static function write($completeMsg)
   {
     print $completeMsg;
     print PHP_EOL;
