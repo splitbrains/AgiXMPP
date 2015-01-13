@@ -37,8 +37,10 @@ class Response
   }
 
   /**
+   * Returns a node by tag name
+   *
    * @param $tag
-   * @return \AgiXMPP\XML\Node
+   * @return Node
    */
   public function get($tag)
   {
@@ -50,6 +52,12 @@ class Response
     return new Node();
   }
 
+  /**
+   * Returns whether a node with a given tag name exists
+   *
+   * @param string $tag
+   * @return bool
+   */
   public function has($tag)
   {
     foreach($this->iterator as $node) {
@@ -61,6 +69,8 @@ class Response
   }
 
   /**
+   * Returns all nodes in a flat array
+   *
    * @param string $tag
    * @return Node[]
    */
@@ -77,14 +87,16 @@ class Response
   }
 
   /**
+   * Returns true whether a underlying node has a given attribute with a given value
+   *
    * @param $attr
    * @param $val
    *
    * @return bool
    */
-  public function getByAttr($attr, $val)
+  public function hasAttributeValue($attr, $val)
   {
-    /** @var \AgiXMPP\XML\Node $node */
+    /** @var Node $node */
     foreach($this->iterator as $node) {
       if ($node instanceof Node && $node->attr($attr) === $val) {
         return true;
@@ -94,7 +106,9 @@ class Response
   }
 
   /**
-   * @return \AgiXMPP\XML\Node
+   * Returns the root node
+   *
+   * @return Node
    */
   public function getRoot()
   {
