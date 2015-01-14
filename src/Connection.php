@@ -31,7 +31,7 @@ class Connection
   /**
    * @var int Remote XMPP server port
    */
-  public $port;
+  public $port = 5222;
 
   /**
    * @var \AgiXMPP\Client
@@ -59,9 +59,14 @@ class Connection
   private $store = array();
 
   /**
+   * @var string
+   */
+  private $resolveResponseId = null;
+
+  /**
    * @var int
    */
-  private $_uid = 0;
+  private static $_uid = 0;
 
 
   public function __construct(Client $client, $host, $port)
@@ -129,9 +134,9 @@ class Connection
    *
    * @return string
    */
-  public function UID()
+  public static function UID()
   {
-    return 'agixmpp_'.substr(md5(microtime().$this->_uid++), 0, 8);
+    return 'agixmpp_'.self::$_uid++;
   }
 
   /**
@@ -192,13 +197,48 @@ class Connection
    * @param string $data
    * @param array $args
    * @param bool $awaitsResponse
+   * @param bool $blockUntilResolved
    * @return \AgiXMPP\Message
    */
-  public function send($data, $args = array(), $awaitsResponse = false)
+  public function send($data, $args = array(), $awaitsResponse = false, $blockUntilResolved = false)
   {
     $message = count($args) > 0 ? vsprintf($data, $args) : $data;
-    return new Message($message, $this, $awaitsResponse);
+    $messageEvent = new Message($message, $awaitsResponse);
+    $this->addEventHandler($messageEvent);
+
+    $this->getSocket()->write($messageEvent->preparedMessage);
+
+    if ($blockUntilResolved) {
+      $this->blockEvents($messageEvent->uid);
+    }
+
+    return $messageEvent;
   }
+
+  /**
+   * @param $id
+   */
+  private function blockEvents($id)
+  {
+    $this->resolveResponseId = $id;
+  }
+
+  /**
+   * @return bool
+   */
+  public function isBlocked()
+  {
+    return !is_null($this->resolveResponseId);
+  }
+
+  /**
+   *
+   */
+  private function unblockEvents()
+  {
+    $this->resolveResponseId = null;
+  }
+
 
   /**
    * Let the main loop sleep a bit to reduce the load
@@ -238,6 +278,15 @@ class Connection
     foreach($this->eventHandlers as $handler) {
       foreach($handler->getEvents() as $eventTag => $events) {
         foreach($events as $callback) {
+
+          // check if event loop is blocked by an event
+          if ($this->isBlocked()) {
+            if ($response->hasAttributeValue('id', $this->resolveResponseId)) {
+              $this->unblockEvents();
+            } else {
+              return;
+            }
+          }
           if ($response->has($eventTag)) {
             $this->invokeEvent($callback, array($response, $this));
           }

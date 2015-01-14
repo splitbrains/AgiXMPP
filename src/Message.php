@@ -33,26 +33,36 @@ class Message extends EventHandler
   private $eventTag;
 
   /**
+   * @var string
+   */
+  private $originalMessage;
+
+  /**
+   * @var string
+   */
+  public $preparedMessage;
+
+  /**
    * @param $message
-   * @param \AgiXMPP\Connection $connection
    * @param $awaitsResponse
    */
-  public function __construct($message, Connection $connection, $awaitsResponse)
+  public function __construct($message, $awaitsResponse)
   {
+    $this->originalMessage = $this->preparedMessage = $message;
     if ($awaitsResponse === true) {
       libxml_use_internal_errors(true);
       $xml = new SimpleXMLElement($message);
 
       if (!isset($xml->attributes()->id)) {
-        $this->uid = $connection->UID();
+        $this->uid = Connection::UID();
         $this->eventTag = $xml->getName();
 
         $xml->addAttribute('id', $this->uid);
-        $message = trim(preg_replace(Parser::XML_DECL_REGEX, '', $xml->asXML()));
+        $this->preparedMessage = trim(preg_replace(Parser::XML_DECL_REGEX, '', $xml->asXML()));
+      } else {
+        $this->uid = $xml->attributes()->id;
       }
-      $connection->addEventHandler($this);
     }
-    $connection->getSocket()->write($message);
   }
 
   /**
@@ -62,8 +72,7 @@ class Message extends EventHandler
   public function onResponse($callback)
   {
     $uid = $this->uid;
-    $eventTag = $this->eventTag;
-    $this->on($eventTag, function(Response $r, Connection $c) use ($eventTag, $callback, $uid) {
+    $this->on($this->eventTag, function(Response $r, Connection $c) use ($callback, $uid) {
       if ($r->hasAttributeValue('id', $uid)) {
         $c->invokeEvent($callback, array($r, $c));
       }
@@ -80,5 +89,10 @@ class Message extends EventHandler
   public function registerEvents()
   {
     return;
+  }
+
+  public function __toString()
+  {
+    return $this->preparedMessage;
   }
 }
