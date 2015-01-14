@@ -10,7 +10,7 @@ namespace AgiXMPP\EventHandlers\IM;
 
 use AgiXMPP\Connection;
 use AgiXMPP\EventHandlers\EventHandler;
-use AgiXMPP\EventHandlers\EventTrigger;
+use AgiXMPP\EventHandlers\Trigger;
 use AgiXMPP\Response;
 
 class RosterHandler extends EventHandler
@@ -21,7 +21,7 @@ class RosterHandler extends EventHandler
 
   public function registerTriggers()
   {
-    $this->onTrigger(EventTrigger::ROSTER_GET, function(Connection $c) {
+    $this->onTrigger(Trigger::ROSTER_GET, function(Connection $c) {
       // request roster (contact list)
       $c ->send('<iq from="%s" type="get"><query xmlns="%s"/></iq>',array($c->client->JID, RosterHandler::IQ_ROSTER_NAMESPACE), true)
          ->onResponse(function(Response $r, Connection $c) {
@@ -35,7 +35,7 @@ class RosterHandler extends EventHandler
 
           file_put_contents(RosterHandler::ROSTER_FILE, $json);
 
-          $c->trigger(EventTrigger::PRESENCE_INIT);
+          $c->trigger(Trigger::PRESENCE_INIT);
         });
     });
   }

@@ -11,7 +11,7 @@ use AgiXMPP\Connection;
 use AgiXMPP\EventHandlers\EventHandler;
 use AgiXMPP\Logger;
 use AgiXMPP\Response;
-use AgiXMPP\EventHandlers\EventTrigger;
+use AgiXMPP\EventHandlers\Trigger;
 
 class StreamHandler extends EventHandler
 {
@@ -29,9 +29,9 @@ class StreamHandler extends EventHandler
 
   public function registerTriggers()
   {
-    $this->onTrigger(EventTrigger::INIT_STREAM, function(Connection $c) {
+    $this->onTrigger(Trigger::INIT_STREAM, function(Connection $c) {
       Logger::log('Starting stream');
-      $conf = array($c->host, $c->client->user, StreamHandler::XMPP_PROTOCOL_VERSION, StreamHandler::XMPP_STREAM_NAMESPACE, StreamHandler::XMPP_STREAM_NAMESPACE_STREAM);
+      $conf = array($c->host, $c->client->username, StreamHandler::XMPP_PROTOCOL_VERSION, StreamHandler::XMPP_STREAM_NAMESPACE, StreamHandler::XMPP_STREAM_NAMESPACE_STREAM);
       $c->send('<stream:stream to="%s" from="%s" version="%s" xmlns="%s" xmlns:stream="%s">', $conf);
     });
   }
@@ -49,19 +49,23 @@ class StreamHandler extends EventHandler
         if (!$r->get('stream:features')->has('starttls')) {
           if ($r->get('mechanisms')->attr('xmlns') == StreamHandler::XMPP_NAMESPACE_SASL) {
             $c->store('waitForSASL', false);
+            $client = $c->client;
 
-            $user = $c->client->user;
-            $pass = $c->client->pass;
+            $user = $client->username;
+            $pass = $client->password;
 
             if (empty($user)) {
               $mechanism  = 'ANONYMOUS';
+              $authString = '';
+            } elseif (isset($client->config['authMechanism'])) {
+              $mechanism = $client->config['authMechanism'];
               $authString = '';
             } else {
               $mechanism  = 'PLAIN';
               $authString = base64_encode(chr(0).$user.chr(0).$pass);
             }
 
-            $c->send('<auth xmlns="%s" mechanism="%s">%s</auth>', array(StreamHandler::XMPP_NAMESPACE_SASL, $mechanism, $authString));
+            $c->send('<auth id="YOLOVANSWAG" xmlns="%s" mechanism="%s">%s</auth>', array(StreamHandler::XMPP_NAMESPACE_SASL, $mechanism, $authString));
             $c->store('waitForAuthSuccess', true);
           }
         }
@@ -87,7 +91,7 @@ class StreamHandler extends EventHandler
       if ($r->get('proceed')->attr('xmlns') == StreamHandler::XMPP_NAMESPACE_TLS) {
         $c->getSocket()->setCrypt(true);
         // we MUST send a new stream without creating a new TCP connection
-        $c->trigger(EventTrigger::INIT_STREAM);
+        $c->trigger(Trigger::INIT_STREAM);
         $c->store('waitForSASL', true);
         // now we wait for the new stream response
         // next: stream:features -> MUST NOT contain starttls tag!
@@ -97,7 +101,7 @@ class StreamHandler extends EventHandler
     $this->on('success', function(Response $r, Connection $c) {
       if ($c->fetch('waitForAuthSuccess') === true) {
         // we MUST send a new stream without creating a new TCP connection
-        $c->trigger(EventTrigger::INIT_STREAM);
+        $c->trigger(Trigger::INIT_STREAM);
         $c->store('waitForAuthSuccess', false);
       }
     });
@@ -117,7 +121,7 @@ class StreamHandler extends EventHandler
     $onSessionStart = function(Response $r, Connection $c) {
       if ($r->get('iq')->attr('type') == 'result') {
         Logger::log('Session started');
-        $c->trigger(EventTrigger::ROSTER_GET);
+        $c->trigger(Trigger::ROSTER_GET);
       }
     };
 
@@ -138,7 +142,7 @@ class StreamHandler extends EventHandler
     };
 
     if (!$r->get('bind')->has('jid') && $r->get('bind')->attr('xmlns') == StreamHandler::XMPP_NAMESPACE_BIND) {
-      $resource = $c->client->resource;
+      $resource = $c->client->config['resource'];
 
       if (!empty($resource)) {
         $binding = sprintf('<bind xmlns="%s"><resource>%s</resource></bind>', StreamHandler::XMPP_NAMESPACE_BIND, $resource);

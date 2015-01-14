@@ -9,7 +9,7 @@ namespace AgiXMPP\EventHandlers\IM;
 
 use AgiXMPP\Connection;
 use AgiXMPP\EventHandlers\EventHandler;
-use AgiXMPP\EventHandlers\EventTrigger;
+use AgiXMPP\EventHandlers\Trigger;
 use AgiXMPP\Response;
 
 class PresenceHandler extends EventHandler
@@ -37,13 +37,13 @@ class PresenceHandler extends EventHandler
 
   public function registerTriggers()
   {
-    $this->onTrigger(EventTrigger::PRESENCE_INIT, function(Connection $c) {
+    $this->onTrigger(Trigger::PRESENCE_INIT, function(Connection $c) {
       $client = $c->client;
       // show initial presence
 
-      $status = $client->status;
-      $priority = $client->priority;
-      $availability = $client->availability;
+      $status = $client->config['status'];
+      $priority = $client->config['priority'];
+      $availability = $client->config['availability'];
 
       $stanzaShow = '';
       $stanzaStatus = '';

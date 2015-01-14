@@ -19,7 +19,7 @@ use AgiXMPP\EventHandlers\Core\StreamHandler;
 use AgiXMPP\EventHandlers\XEP\PING_199\PingHandler;
 use AgiXMPP\EventHandlers\IM\RosterHandler;
 use AgiXMPP\EventHandlers\IM\PresenceHandler;
-use AgiXMPP\EventHandlers\EventTrigger;
+use AgiXMPP\EventHandlers\Trigger;
 
 class Connection
 {
@@ -99,7 +99,7 @@ class Connection
     Logger::log('Attempting to connect to '.$this->host.':'.$this->port.'.');
 
     if ($conn) {
-      $this->trigger(EventTrigger::INIT_STREAM);
+      $this->trigger(Trigger::INIT_STREAM);
       return true;
     }
     Logger::err('Could not connect to host.', true);
@@ -239,18 +239,6 @@ class Connection
     $this->resolveResponseId = null;
   }
 
-
-  /**
-   * Let the main loop sleep a bit to reduce the load
-   *
-   * @param int $min
-   * @param int $max
-   */
-  public function sleep($min = 100, $max = 300)
-  {
-    usleep(mt_rand($min, $max) * 1000);
-  }
-
   /**
    *
    */
@@ -264,10 +252,19 @@ class Connection
 
   /**
    * @param EventHandlers\EventHandler $handler
+   * @param int $priority
    */
-  public function addEventHandler(EventHandler $handler)
+  public function addEventHandler(EventHandler $handler, $priority = EventHandler::PRIORITY_NORMAL)
   {
+    $handler->priority = $priority;
     $this->eventHandlers[] = $handler;
+  }
+
+  private function getEventHandlers()
+  {
+    usort($this->eventHandlers, array($this, 'sortEventHandlerByPriority'));
+
+    return $this->eventHandlers;
   }
 
   /**
@@ -275,9 +272,10 @@ class Connection
    */
   private function handleEvents(Response $response)
   {
-    foreach($this->eventHandlers as $handler) {
+    foreach($this->getEventHandlers() as $handler) {
       foreach($handler->getEvents() as $eventTag => $events) {
-        foreach($events as $callback) {
+        /** @var EventHandlers\Event[] $events */
+        foreach($events as $event) {
 
           // check if event loop is blocked by an event
           if ($this->isBlocked()) {
@@ -288,11 +286,46 @@ class Connection
             }
           }
           if ($response->has($eventTag)) {
-            $this->invokeEvent($callback, array($response, $this));
+            $this->invokeEvent($event->callback, array($response, $this));
           }
         }
       }
     }
+  }
+
+  /**
+   * @param string $triggerName
+   */
+  public function trigger($triggerName)
+  {
+    if ($this->isBlocked()) {
+      return;
+    }
+
+    foreach($this->getEventHandlers() as $handler) {
+      /** @var EventHandlers\Event[] $triggers */
+      $triggers = $handler->getTriggers();
+      foreach($triggers as $trigger) {
+        if ($triggerName === $trigger->name) {
+          $this->invokeEvent($trigger->callback, array($this));
+        }
+      }
+    }
+  }
+
+  /**
+   * Sort higher prioritized events to top of array and vice versa.
+   *
+   * @param $a
+   * @param $b
+   * @return int
+   */
+  private function sortEventHandlerByPriority($a, $b)
+  {
+    if ($a->priority == $b->priority) {
+      return 0;
+    }
+    return $a->priority > $b->priority ? -1 : 1;
   }
 
   /**
@@ -303,21 +336,6 @@ class Connection
   {
     if (is_callable($callback) || is_array($callback)) {
       call_user_func_array($callback, $parameters);
-    }
-  }
-
-  /**
-   * @param string $trigger
-   */
-  public function trigger($trigger)
-  {
-    foreach($this->eventHandlers as $handler) {
-      //$handler->onTrigger($trigger, $this);
-      foreach($handler->getTriggers() as $name => $callback) {
-        if ($trigger == $name) {
-          $this->invokeEvent($callback, array($this));
-        }
-      }
     }
   }
 
