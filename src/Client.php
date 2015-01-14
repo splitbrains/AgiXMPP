@@ -6,37 +6,22 @@ class Client
   /**
    * @var string User for authentication
    */
-  public $user;
+  public $username;
 
   /**
    * @var string Password for authentication
    */
-  public $pass;
-
-  /**
-   * @var string The resource, which will be shown in the full JID (e.g. laptop, mobile, ..)
-   */
-  public $resource;
-
-  /**
-   * @var string
-   */
-  public $availability;
-
-  /**
-   * @var string
-   */
-  public $priority;
-
-  /**
-   * @var string
-   */
-  public $status;
+  public $password;
 
   /**
    * @var string
    */
   public $JID;
+
+  /**
+   * @var array
+   */
+  public $config = array();
 
   /**
    * @var bool
@@ -54,12 +39,24 @@ class Client
    */
   public function __construct(array $config)
   {
-    $this->user = $config['user'];
-    $this->pass = $config['pass'];
-    $this->status = $config['status'];
-    $this->resource = $config['resource'];
-    $this->priority = $config['priority'];
-    $this->availability = $config['availability'];
+    if (!isset($config['host'])) {
+      Logger::err('Host not set, check your configuration', true);
+    }
+
+    if (!isset($config['username'])) {
+      Logger::err('User name not set, check your configuration', true);
+    }
+
+    if (!isset($config['password'])) {
+      Logger::err('User password not set, check your configuration', true);
+    }
+
+    $this->username = $config['username'];
+    $this->password = $config['password'];
+
+    foreach ($config as $key => $value) {
+      $this->config[$key] = $value;
+    }
 
     $this->connection = new Connection($this, $config['host'], $config['port']);
   }
