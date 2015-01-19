@@ -17,6 +17,7 @@ use AgiXMPP\EventHandlers\XEP\PING_199\PingHandler;
 use AgiXMPP\EventHandlers\IM\RosterHandler;
 use AgiXMPP\EventHandlers\IM\PresenceHandler;
 use AgiXMPP\EventHandlers\Trigger;
+use Fabiang\Sasl\Sasl;
 
 class Connection
 {
@@ -125,6 +126,17 @@ class Connection
     }
     $this->socket->close();
     Logger::log('Disconnected');
+  }
+
+  /**
+   * @param string $mechanism
+   * @param array $data
+   * @return \Fabiang\Sasl\Authentication\AuthenticationInterface
+   */
+  public function createSASLAuth($mechanism, $data)
+  {
+    $auth = new Sasl();
+    return $auth->factory($mechanism, $data);
   }
 
   /**

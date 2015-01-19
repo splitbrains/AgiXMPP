@@ -81,15 +81,8 @@ class Message extends EventHandler
     return $this;
   }
 
-  public function registerTriggers()
-  {
-    return;
-  }
-
-  public function registerEvents()
-  {
-    return;
-  }
+  public function registerTriggers() {}
+  public function registerEvents() {}
 
   public function __toString()
   {

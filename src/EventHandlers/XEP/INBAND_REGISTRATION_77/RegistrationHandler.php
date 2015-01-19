@@ -54,7 +54,7 @@ class RegistrationHandler extends EventHandler
 
 
     $this->on('stream:stream', function(Response $r, Connection $c) use ($registerInformation) {
-      if (is_null($c->fetch('sessionId'))) {
+      if (is_null($c->storage->get('sessionId'))) {
         $c->send('<iq type="get"><query xmlns="%s" /></iq>', array(RegistrationHandler::XMPP_JABBER_IQ_REGISTER), true, true)
           ->onResponse($registerInformation);
       }

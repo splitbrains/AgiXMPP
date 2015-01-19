@@ -23,6 +23,7 @@ class StreamHandler extends EventHandler
   const XMPP_NAMESPACE_TLS  = 'urn:ietf:params:xml:ns:xmpp-tls';
   const XMPP_NAMESPACE_BIND = 'urn:ietf:params:xml:ns:xmpp-bind';
   const XMPP_NAMESPACE_SESSION = 'urn:ietf:params:xml:ns:xmpp-session';
+  const XMPP_SERVICE_NAME  = 'xmpp';
 
   const XMPP_TERMINATE_STREAM = '</stream:stream>';
 
@@ -36,37 +37,51 @@ class StreamHandler extends EventHandler
     });
   }
 
+
   public function registerEvents()
   {
     $this->on('stream:stream', function(Response $r, Connection $c) {
-      $c->store('sessionId', $r->get('stream:stream')->attr('id'));
+      $c->storage->set('sessionId', $r->get('stream:stream')->attr('id'));
     });
 
-    $this->on('stream:features', function(Response $r, Connection $c) {
-      if ($c->fetch('waitForSASL') === true || $c->fetch('initialFeatures') == null) {
-        $c->store('initialFeatures', true);
+    $that = $this;
+
+    $this->on('stream:features', function(Response $r, Connection $c) use ($that) {
+      if ($c->storage->get('waitForSASL') === true || $c->storage->get('initialFeatures') == null) {
+        $c->storage->set('initialFeatures', true);
+
         // as we are waiting for the SASL auth, there MUST NOT be any starttls tag in stream:features
         if (!$r->get('stream:features')->has('starttls')) {
           if ($r->get('mechanisms')->attr('xmlns') == StreamHandler::XMPP_NAMESPACE_SASL) {
-            $c->store('waitForSASL', false);
+            $c->storage->set('waitForSASL', false);
             $client = $c->client;
 
-            $user = $client->username;
-            $pass = $client->password;
-
-            if (empty($user)) {
-              $mechanism  = 'ANONYMOUS';
-              $authString = '';
-            } elseif (isset($client->config['authMechanism'])) {
-              $mechanism = $client->config['authMechanism'];
-              $authString = '';
+            if (empty($client->username)) {
+              $authMechanism = 'ANONYMOUS';
+            } elseif (!isset($client->config['authMechanism'])) {
+              $authMechanism = 'PLAIN';
             } else {
-              $mechanism  = 'PLAIN';
-              $authString = base64_encode(chr(0).$user.chr(0).$pass);
+              $authMechanism = strtoupper($client->config['authMechanism']);
             }
 
-            $c->send('<auth id="YOLOVANSWAG" xmlns="%s" mechanism="%s">%s</auth>', array(StreamHandler::XMPP_NAMESPACE_SASL, $mechanism, $authString));
-            $c->store('waitForAuthSuccess', true);
+            switch ($authMechanism) {
+              case 'ANONYMOUS':
+                $handler = new AuthMechanism\ANONYMOUS();
+                break;
+              case 'PLAIN':
+                $handler = new AuthMechanism\PLAIN();
+                break;
+              case 'SCRAM-SHA-1':
+                $handler = new AuthMechanism\SCRAM_SHA_1();
+                break;
+              case 'DIGEST-MD5':
+                $handler = new AuthMechanism\DIGEST_MD5();
+                break;
+              default:
+                Logger::err('No valid auth mechanism provided.', true);
+            }
+
+            $c->addEventHandler($handler);
           }
         }
       }
@@ -74,7 +89,7 @@ class StreamHandler extends EventHandler
 
     $this->on('session', function(Response $r, Connection $c) {
       if ($r->hasAttributeValue('xmlns', StreamHandler::XMPP_NAMESPACE_SESSION)) {
-        $c->store('hasSessionFeature', true);
+        $c->storage->set('hasSessionFeature', true);
       }
     });
 
@@ -92,25 +107,27 @@ class StreamHandler extends EventHandler
         $c->getSocket()->setCrypt(true);
         // we MUST send a new stream without creating a new TCP connection
         $c->trigger(Trigger::INIT_STREAM);
-        $c->store('waitForSASL', true);
+        $c->storage->set('waitForSASL', true);
         // now we wait for the new stream response
         // next: stream:features -> MUST NOT contain starttls tag!
       }
     });
 
     $this->on('success', function(Response $r, Connection $c) {
-      if ($c->fetch('waitForAuthSuccess') === true) {
+      if ($r->hasAttributeValue('xmlns', StreamHandler::XMPP_NAMESPACE_SASL)) {
         // we MUST send a new stream without creating a new TCP connection
         $c->trigger(Trigger::INIT_STREAM);
-        $c->store('waitForAuthSuccess', false);
       }
     });
 
-    $this->on('failure', function(Response $r, Connection $c) {
-      if ($c->fetch('waitForAuthSuccess')) {
-        $c->store('waitForAuthSuccess', false);
+    $this->on('failure', function(Response $r) {
+      if ($r->has('not-authorized')) {
         Logger::err('Wrong user credentials!', true);
       }
+      if ($r->has('no-mechanism')) {
+        Logger::err('No valid auth mechanism provided.');
+      }
+      Logger::err('Unspecified error. Check logs for details.', true);
     });
 
     $this->on('bind', array($this, 'onBind'));
@@ -134,7 +151,7 @@ class StreamHandler extends EventHandler
         $c->client->JID = $jid;
         $c->client->authStatus = true;
 
-        if ($c->fetch('hasSessionFeature') === true) {
+        if ($c->storage->get('hasSessionFeature') === true) {
           $c->send('<iq type="set"><session xmlns="%s"/></iq>', array(StreamHandler::XMPP_NAMESPACE_SESSION), true)
             ->onResponse($onSessionStart);
         }
