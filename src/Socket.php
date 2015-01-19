@@ -1,8 +1,6 @@
 <?php
 namespace AgiXMPP;
 
-use AgiXMPP\Logger;
-
 class Socket
 {
   const TIMEOUT = 10;
@@ -35,7 +33,6 @@ class Socket
     $this->socket = stream_socket_client(sprintf('%s://%s:%d', $protocol, $host, $port), $errno, $errstr, self::TIMEOUT, $flags);
 
     if ($this->socket) {
-//      stream_set_timeout($this->socket, self::TIMEOUT);
       stream_set_blocking($this->socket, 1);
       $this->connected = true;
 
@@ -44,9 +41,6 @@ class Socket
     return false;
   }
 
-  /**
-   *
-   */
   public function close()
   {
     if ($this->connected) {

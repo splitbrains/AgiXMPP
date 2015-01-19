@@ -1,15 +1,14 @@
 <?php
-namespace AgiXMPP\EventHandlers\Core\AuthMechanism;
-
-use AgiXMPP\EventHandlers\Core\StreamHandler;
-use AgiXMPP\EventHandlers\EventHandler;
-
 /**
  * @author Daniel Lehr <daniel@agixo.de>
  * @internal-coding = utf-8
  * @internal UTF-Chars: ÄÖÜäöüß∆
  * created on 15.01.15 15:23.
  */
+namespace AgiXMPP\EventHandlers\Core\AuthMechanism;
+
+use AgiXMPP\EventHandlers\Core\StreamHandler;
+use AgiXMPP\EventHandlers\EventHandler;
  
 class PLAIN extends EventHandler
 {

@@ -5,7 +5,6 @@
  * @internal UTF-Chars: ÄÖÜäöüß∆
  * created on 12.01.12 14:21.
  */
- 
 namespace AgiXMPP\EventHandlers\IM;
 
 use AgiXMPP\Connection;

@@ -1,12 +1,11 @@
 <?php
-namespace AgiXMPP\Utility;
-
 /**
  * @author Daniel Lehr <daniel@agixo.de>
  * @internal-coding = utf-8
  * @internal UTF-Chars: ÄÖÜäöüß∆
  * created on 15.01.2015 14:08.
  */
+namespace AgiXMPP\Utility;
 
 class Storage
 {

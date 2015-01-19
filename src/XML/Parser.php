@@ -7,8 +7,6 @@
  */
 namespace AgiXMPP\XML;
 
-use AgiXMPP\XML\Node;
-
 class Parser
 {
   /**

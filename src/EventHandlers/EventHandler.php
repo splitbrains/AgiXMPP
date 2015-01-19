@@ -1,12 +1,11 @@
 <?php
-namespace AgiXMPP\EventHandlers;
-
 /**
  * @author Daniel Lehr <daniel@agixo.de>
  * @internal-coding = utf-8
  * @internal UTF-Chars: ÄÖÜäöüß∆
  * created on 11.01.12 14:19.
  */
+namespace AgiXMPP\EventHandlers;
 
 abstract class EventHandler
 {
