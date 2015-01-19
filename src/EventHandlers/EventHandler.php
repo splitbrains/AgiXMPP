@@ -57,9 +57,10 @@ abstract class EventHandler
   private $triggers = array();
 
   /**
-   *
+   * This method is called as soon as the event handler is mounted into the event handling system.
+   * If overwritten/extended, don't forget to call parent::onMount() at the end of your method.
    */
-  public function __construct()
+  public function onMount()
   {
     $this->registerTriggers();
     $this->registerEvents();

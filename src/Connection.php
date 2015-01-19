@@ -7,13 +7,10 @@
  */
 namespace AgiXMPP;
 
-use AgiXMPP\Client;
-use AgiXMPP\Socket;
-use AgiXMPP\Logger;
-use AgiXMPP\Response;
-use AgiXMPP\EventHandlers\EventHandler;
 use AgiXMPP\XML\Parser;
+use AgiXMPP\Utility\Storage;
 
+use AgiXMPP\EventHandlers\EventHandler;
 // default handlers which are registered in registerDefaultHandlers()
 use AgiXMPP\EventHandlers\Core\StreamHandler;
 use AgiXMPP\EventHandlers\XEP\PING_199\PingHandler;
@@ -34,29 +31,29 @@ class Connection
   public $port = 5222;
 
   /**
-   * @var \AgiXMPP\Client
+   * @var Client
    */
   public $client;
 
   /**
-   * @var \AgiXMPP\Socket The basic socket stream
+   * @var Socket The basic socket stream
    */
   private $socket;
 
   /**
-   * @var \AgiXMPP\XML\Parser
+   * @var Parser
    */
   private $xmlParser;
 
   /**
-   * @var \AgiXMPP\EventHandlers\EventHandler[]
+   * @var EventHandler[]
    */
   private $eventHandlers = array();
 
   /**
-   * @var array
+   * @var Storage
    */
-  private $store = array();
+  public $storage;
 
   /**
    * @var string
@@ -77,6 +74,7 @@ class Connection
 
     $this->socket = new Socket();
     $this->xmlParser = new Parser();
+    $this->storage = new Storage();
 
     $this->registerDefaultHandlers();
   }
@@ -257,12 +255,16 @@ class Connection
   public function addEventHandler(EventHandler $handler, $priority = EventHandler::PRIORITY_NORMAL)
   {
     $handler->priority = $priority;
+    $handler->connection = $this;
     $this->eventHandlers[] = $handler;
+    $handler->onMount();
   }
 
   private function getEventHandlers()
   {
-    usort($this->eventHandlers, array($this, 'sortEventHandlerByPriority'));
+    if (count($this->eventHandlers) > 1) {
+      usort($this->eventHandlers, array($this, 'sortEventHandlerByPriority'));
+    }
 
     return $this->eventHandlers;
   }
@@ -345,26 +347,5 @@ class Connection
   public function getSocket()
   {
     return $this->socket;
-  }
-
-  /**
-   * @param $key
-   * @param $val
-   */
-  public function store($key, $val)
-  {
-    $this->store[$key] = $val;
-  }
-
-  /**
-   * @param $key
-   * @return mixed
-   */
-  public function fetch($key)
-  {
-    if (isset($this->store[$key])) {
-      return $this->store[$key];
-    }
-    return null;
   }
 }
