@@ -1,4 +1,10 @@
 <?php
+/**
+ * @author Daniel Lehr <daniel@agixo.de>
+ * @internal-coding = utf-8
+ * @internal UTF-Chars: ÄÖÜäöüß∆
+ * created on 30.12.11 17:40.
+ */
 namespace AgiXMPP;
 
 class Client
@@ -16,7 +22,7 @@ class Client
   /**
    * @var string
    */
-  public $JID;
+  public $jid;
 
   /**
    * @var array
@@ -69,10 +75,5 @@ class Client
   public function connect()
   {
     return $this->connection->connect();
-  }
-
-  public function isConnected()
-  {
-    return $this->connection->isConnected();
   }
 }

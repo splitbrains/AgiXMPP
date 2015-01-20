@@ -22,7 +22,7 @@ class RosterHandler extends EventHandler
   {
     $this->onTrigger(Trigger::ROSTER_GET, function(Connection $c) {
       // request roster (contact list)
-      $c ->send('<iq from="%s" type="get"><query xmlns="%s"/></iq>',array($c->client->JID, RosterHandler::IQ_ROSTER_NAMESPACE), true)
+      $c ->send('<iq from="%s" type="get"><query xmlns="%s"/></iq>',array($c->client->jid, RosterHandler::IQ_ROSTER_NAMESPACE), true)
          ->onResponse(function(Response $r, Connection $c) {
           $children = $r->getAll('item');
 

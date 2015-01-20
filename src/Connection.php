@@ -9,10 +9,13 @@ namespace AgiXMPP;
 
 use AgiXMPP\XML\Parser;
 use AgiXMPP\Utility\Storage;
+use AgiXMPP\Transport\MessageDecorator;
+use AgiXMPP\Transport\TransportInterface;
 
 use AgiXMPP\EventHandlers\EventHandler;
 // default handlers which are registered in registerDefaultHandlers()
 use AgiXMPP\EventHandlers\Core\StreamHandler;
+use AgiXMPP\EventHandlers\Core\BoshStreamHandler;
 use AgiXMPP\EventHandlers\XEP\PING_199\PingHandler;
 use AgiXMPP\EventHandlers\IM\RosterHandler;
 use AgiXMPP\EventHandlers\IM\PresenceHandler;
@@ -29,7 +32,7 @@ class Connection
   /**
    * @var int Remote XMPP server port
    */
-  public $port = 5222;
+  public $port;
 
   /**
    * @var Client
@@ -37,9 +40,19 @@ class Connection
   public $client;
 
   /**
-   * @var Socket The basic socket stream
+   * @var string
    */
-  private $socket;
+  public $sid;
+
+  /**
+   * @var int
+   */
+  public $rid;
+
+  /**
+   * @var TransportInterface The basic socket stream
+   */
+  private $transport;
 
   /**
    * @var Parser
@@ -66,14 +79,29 @@ class Connection
    */
   private static $_uid = 0;
 
-
+  /**
+   * @param Client $client
+   * @param string $host
+   * @param int $port
+   */
   public function __construct(Client $client, $host, $port)
   {
     $this->host = $host;
     $this->port = $port;
     $this->client = $client;
 
-    $this->socket = new Socket();
+    $transport = isset($client->config['transport']) ? $client->config['transport'] : 'socket';
+    switch (strtolower($transport)) {
+      case 'bosh':
+        $this->transport = new Transport\BOSH();
+        $this->rid = mt_rand(100000, 1000000000);
+        $this->addEventHandler(new BoshStreamHandler());
+        break;
+      default:
+        $this->transport = new Transport\Socket();
+        $this->addEventHandler(new StreamHandler());
+    }
+
     $this->xmlParser = new Parser();
     $this->storage = new Storage();
 
@@ -94,11 +122,19 @@ class Connection
    */
   public function connect()
   {
-    $conn = $this->socket->open('tcp', $this->host, $this->port, true);
+    $conn = $this->transport->open($this->host, $this->port);
     Logger::log('Attempting to connect to '.$this->host.':'.$this->port.'.');
 
     if ($conn) {
       $this->trigger(Trigger::INIT_STREAM);
+
+      do {
+        if ($this->receive()) {
+          $response = new Response($this->xmlParser->getTree());
+          $this->handleEvents($response);
+        }
+      } while(!$this->transport->hasTimedOut() && $this->transport->isConnected());
+
       return true;
     }
     Logger::err('Could not connect to host.', true);
@@ -122,9 +158,9 @@ class Connection
   public function disconnect($closeStream = false)
   {
     if ($closeStream) {
-      $this->socket->write(StreamHandler::XMPP_TERMINATE_STREAM);
+      $this->transport->send(StreamHandler::XMPP_TERMINATE_STREAM);
     }
-    $this->socket->close();
+    $this->transport->close();
     Logger::log('Disconnected');
   }
 
@@ -152,26 +188,13 @@ class Connection
   /**
    * @return bool
    */
-  public function isConnected()
-  {
-    if ($this->receive()) {
-      $response = new Response($this->xmlParser->getTree());
-      $this->handleEvents($response);
-    }
-
-    return !$this->socket->hasTimedOut() && $this->socket->isConnected();
-  }
-
-  /**
-   * @return bool
-   */
   private function receive()
   {
-    $buffer = $this->isEnclosedBuffer($this->socket->read());
+    $buffer = $this->isEnclosedBuffer($this->transport->read());
 
-    if ($buffer !== false) {
+    if ($buffer !== false && strlen($buffer) > 0) {
       if ($buffer == StreamHandler::XMPP_TERMINATE_STREAM) {
-        $this->socket->close();
+        $this->transport->close();
       } else {
         return $this->xmlParser->isValid($buffer);
       }
@@ -216,13 +239,29 @@ class Connection
     $messageEvent = new Message($message, $awaitsResponse);
     $this->addEventHandler($messageEvent);
 
-    $this->getSocket()->write($messageEvent->preparedMessage);
+    $preparedMessage = new MessageDecorator($messageEvent, $this->transport, $this);
+//    $preparedMessage = $messageEvent->preparedMessage;
+    $this->transport->send($preparedMessage->getMessage());
 
     if ($blockUntilResolved) {
       $this->blockEvents($messageEvent->uid);
     }
 
     return $messageEvent;
+  }
+
+  /**
+   * @return array
+   */
+  public function getSessionInfo()
+  {
+    if ($this->jid && $this->sid && $this->rid) {
+      return array(
+        'jid' => $this->jid,
+        'sid' => $this->sid,
+        'rid' => $this->rid
+      );
+    }
   }
 
   /**
@@ -254,7 +293,6 @@ class Connection
    */
   private function registerDefaultHandlers()
   {
-    $this->addEventHandler(new StreamHandler());
     $this->addEventHandler(new PingHandler());
     $this->addEventHandler(new PresenceHandler());
     $this->addEventHandler(new RosterHandler());
@@ -354,10 +392,10 @@ class Connection
   }
 
   /**
-   * @return \AgiXMPP\Socket
+   * @return \AgiXMPP\Transport\TransportInterface
    */
-  public function getSocket()
+  public function getTransport()
   {
-    return $this->socket;
+    return $this->transport;
   }
 }

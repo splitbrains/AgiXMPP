@@ -104,7 +104,7 @@ class StreamHandler extends EventHandler
 
     $this->on('proceed', function(Response $r, Connection $c) {
       if ($r->get('proceed')->attr('xmlns') == StreamHandler::XMPP_NAMESPACE_TLS) {
-        $c->getSocket()->setCrypt(true);
+        $c->getTransport()->setCrypt(true);
         // we MUST send a new stream without creating a new TCP connection
         $c->trigger(Trigger::INIT_STREAM);
         $c->storage->set('waitForSASL', true);
@@ -148,7 +148,7 @@ class StreamHandler extends EventHandler
 
         $jid = $r->get('jid')->cdata;
 
-        $c->client->JID = $jid;
+        $c->client->jid = $jid;
         $c->client->authStatus = true;
 
         if ($c->storage->get('hasSessionFeature') === true) {

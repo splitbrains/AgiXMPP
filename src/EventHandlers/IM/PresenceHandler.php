@@ -59,14 +59,14 @@ class PresenceHandler extends EventHandler
         $stanzaPriority = sprintf('<priority>%d</priority>', (int)$priority);
       }
 
-      $c->send('<presence from="%s">%s%s%s</presence>', array($client->JID, $stanzaShow, $stanzaStatus, $stanzaPriority));
+      $c->send('<presence from="%s">%s%s%s</presence>', array($client->jid, $stanzaShow, $stanzaStatus, $stanzaPriority));
     });
   }
 
   public function registerEvents()
   {
     $this->on('presence', function(Response $r, Connection $c) {
-      if ($r->get('presence')->attr('to') == $c->client->JID) {
+      if ($r->get('presence')->attr('to') == $c->client->jid) {
         $from = $r->get('presence')->attr('from');
 
         $presence = array();
